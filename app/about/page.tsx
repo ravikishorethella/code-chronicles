@@ -2,7 +2,7 @@ import siteConfig from "@/site.config";
 
 export const metadata = {
   title: "About — Code Chronicles",
-  description: "7 years of full-stack development, now diving deep into AI agents and LLMs.",
+  description: "9 years of full-stack development, now diving deep into AI agents and LLMs.",
 };
 
 const experience = [
@@ -54,7 +54,7 @@ export default function AboutPage() {
       <section className="mb-12">
         <div className="rounded-xl bg-indigo-50 p-6 dark:bg-indigo-900/20">
           <p className="leading-relaxed text-gray-700 dark:text-gray-300">
-            I have 7 years of experience building production applications with Java, Spring Boot, React, and JavaScript.
+            I have 9 years of experience building production applications with Java, Spring Boot, React, and JavaScript.
             In 2026, I started my journey into AI — exploring LLMs, building RAG systems, and creating AI agents.
             This blog is my public learning journal.
           </p>
