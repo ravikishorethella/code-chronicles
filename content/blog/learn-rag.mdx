@@ -1,0 +1,49 @@
+---
+title: "Learning about LangChain and RAG"
+date: "05/01/2026"
+excerpt: "Learning the basics of what a RAG is..."
+tags: ["RAG", "LangChain", "Supabase", "OpenAI", "JavaScript"]
+draft: true
+---
+
+# Building My First RAG Chatbot
+
+> 🚧 **Draft** — In this post, I will be focusing only on Overview, Indexing, Retrieval, Generation, Multi-Query and Future of RAG.
+
+## What I'm Building
+
+A chatbot that can answer questions about my own interview prep documents using Retrieval-Augmented Generation (RAG).
+
+## Tech Stack
+
+- **LangChain.js** — orchestration
+- **OpenAI GPT-4o-mini** — the LLM
+- **Supabase pgvector** — vector database
+- **React + Vercel AI SDK** — frontend with streaming
+- **Node.js / Express** — backend API
+
+## Architecture
+
+```
+User question
+    ↓
+Generate embedding (text-embedding-3-small)
+    ↓
+Vector similarity search in Supabase
+    ↓
+Retrieve top 5 relevant document chunks
+    ↓
+Inject into prompt as context
+    ↓
+GPT-4o-mini generates answer
+    ↓
+Stream response to React UI
+```
+
+**Indexing** — how to take raw documents → chunk them → convert to embeddings → store in vector DB
+
+**Retrieval** — given a user query, how to find the most relevant chunks using similarity search
+
+**Generation** — how to inject retrieved chunks into the prompt so the LLM answers with real context
+
+**Multi-Query** — instead of one search query, generate 3-5 variations to retrieve better results (simple trick, big improvement)

@@ -1,0 +1,342 @@
+---
+title: "RAG From Scratch — How to Make an LLM Answer From Your Own Documents"
+date: "05/01/2026"
+excerpt: "I watched AI Jason's RAG from Scratch course so you don't have to wade through 2.5 hours. Here's the core of what RAG is, how it works, and why it matters — explained the way I wish someone had explained it to me."
+tags: ["RAG", "LangChain", "LLM", "OpenAI", "AI Agents"]
+draft: false
+---
+
+# RAG From Scratch — How to Make an LLM Answer From Your Own Documents
+
+> 📌 **Credit:** The concepts, diagrams, and code patterns in this post are based on [**AI Jason's**](https://www.youtube.com/@AIJasonZ) excellent course [*RAG from Scratch*](https://www.youtube.com/watch?v=sVcwVQRHIc8) (YouTube, 2024). All architectural credit goes to him and the [LangChain team](https://github.com/langchain-ai). I'm just the developer who watched it, broke it down, and wrote about what clicked.
+
+---
+
+Okay, so here's the thing. I'd been hearing "RAG" thrown around constantly in AI circles for months. I understood it loosely — something about giving the LLM your documents so it could answer questions about them. But the *how* was fuzzy.
+
+Then I watched AI Jason's RAG from scratch course and it finally clicked. Not all at once — the video is 2.5 hours — but the first 30 minutes gave me the mental model I needed to actually start building.
+
+This post covers those first 5 topics from his course outline. Nothing more, nothing less. If you're a developer who learns best by reading before watching, start here.
+
+---
+
+## The Problem RAG Solves
+
+Let's anchor this with a real scenario.
+
+You have an LLM — say, GPT-4o. It's brilliant. It knows about history, science, code, philosophy. But ask it about **your company's internal docs**, your **personal notes**, or **anything that happened after its training cutoff** — and it either makes something up (hallucination) or says "I don't know."
+
+That's the wall every developer hits within their first week of building with LLMs.
+
+```
+You:  "What did we decide in the Q3 architecture meeting?"
+GPT:  "I don't have access to your meeting notes." ← honest but useless
+  or
+GPT:  "In Q3, your team decided to adopt microservices..." ← confidently wrong
+```
+
+**RAG fixes this** by giving the LLM your documents *at the moment it needs to answer*. Not by training it on your data (expensive, slow), but by retrieving relevant pieces in real time and handing them to the model as context.
+
+![A person searching through a library of books to find relevant pages before answering a question, representing how RAG retrieves documents before generating an answer](https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=900&auto=format&fit=crop&q=80)
+*RAG is like open-book exam for an LLM — instead of memorising everything, it looks up the relevant pages before answering. Photo: [Unsplash](https://unsplash.com)*
+
+RAG stands for **Retrieval-Augmented Generation**. The name tells you exactly what it does:
+- **Retrieval** — find relevant documents
+- **Augmented** — add them to the prompt
+- **Generation** — LLM generates an answer using that context
+
+---
+
+## 1. Overview — The 3-Step Pipeline
+
+Before getting into the weeds, here's the complete picture. RAG has two distinct phases:
+
+### Phase A — Indexing (happens once, offline)
+You process your documents and store them in a way that makes them searchable.
+
+### Phase B — Retrieval + Generation (happens every query, online)
+When a user asks a question, you find relevant document chunks and give them to the LLM.
+
+```
+━━━━━━━━━━━━━━ INDEXING PHASE (done once) ━━━━━━━━━━━━━━
+
+  Your documents (PDF, markdown, URLs)
+            ↓
+       Text Splitter
+    (breaks into chunks)
+            ↓
+    Embedding Model
+  (converts text → numbers)
+            ↓
+      Vector Store
+   (stores the numbers)
+
+━━━━━━━━━━━━━━ QUERY PHASE (every user question) ━━━━━━━━
+
+  User Question
+       ↓
+  Embedding Model
+  (question → numbers)
+       ↓
+  Vector Store Search
+  (find similar chunks)
+       ↓
+  Top K chunks retrieved
+       ↓
+  Prompt = Question + Chunks
+       ↓
+       LLM
+       ↓
+    Answer ✅
+```
+
+That's it. Two phases, one clean mental model. Everything else in RAG is optimisation on top of this core pattern.
+
+---
+
+## 2. Indexing — Processing Your Documents
+
+Indexing is the foundation. If you do it badly, your retrieval will be bad, and your answers will be bad. Garbage in, garbage out.
+
+There are 3 steps:
+
+### Step 1 — Load the Documents
+
+LangChain has loaders for everything:
+
+```javascript
+import { DirectoryLoader } from "langchain/document_loaders/fs/directory";
+import { TextLoader } from "langchain/document_loaders/fs/text";
+
+// Load all .md files from a folder
+const loader = new DirectoryLoader("./docs", {
+  ".md": (path) => new TextLoader(path),
+});
+const docs = await loader.load();
+console.log(`Loaded ${docs.length} documents`);
+```
+
+Each `Document` object has two things: `pageContent` (the text) and `metadata` (filename, page number, source URL, etc.). That metadata becomes crucial later for citation.
+
+### Step 2 — Split Into Chunks
+
+Here's something that surprised me: you can't just dump an entire 10,000 word document into the LLM as context. Context windows have limits, and more importantly — **smaller, focused chunks give better retrieval results**.
+
+```javascript
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 1000,      // ~1000 characters per chunk
+  chunkOverlap: 200,    // 200 char overlap between chunks (preserves context at boundaries)
+});
+
+const chunks = await splitter.splitDocuments(docs);
+console.log(`Split into ${chunks.length} chunks`);
+```
+
+The `chunkOverlap` is important — it prevents the case where a sentence gets split right in the middle between two chunks, losing meaning at the boundary.
+
+> 💡 **Rule of thumb:** `chunkSize: 1000` and `chunkOverlap: 200` is a solid starting point. Tune it based on your document type — short Q&A pairs need smaller chunks, long narrative docs can handle larger ones.
+
+### Step 3 — Embed and Store
+
+Now each chunk gets converted to a **vector** — a list of ~1500 numbers that represents the *meaning* of that text. Similar meaning = similar numbers = close together in vector space.
+
+```javascript
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
+
+const embeddings = new OpenAIEmbeddings({
+  model: "text-embedding-3-small", // cheap, fast, accurate enough
+});
+
+// Embed all chunks and store in Supabase
+const vectorStore = await SupabaseVectorStore.fromDocuments(
+  chunks,
+  embeddings,
+  { client, tableName: "documents" }
+);
+```
+
+This step costs money (OpenAI charges per token for embeddings) but `text-embedding-3-small` is extremely cheap — embedding an entire book costs less than a cent.
+
+![A 3D visualization of colored dots in clusters representing word vectors in high-dimensional space, showing how similar concepts cluster together](https://images.unsplash.com/photo-1509228468518-180dd4864904?w=900&auto=format&fit=crop&q=80)
+*Each document chunk becomes a point in high-dimensional space. Similar chunks cluster together — that's what makes semantic search possible. Photo: [Unsplash](https://unsplash.com)*
+
+---
+
+## 3. Retrieval — Finding What Matters
+
+Once your documents are indexed, retrieval is fast. When a user asks a question:
+
+1. The question gets embedded (same model as the documents)
+2. We search the vector store for the closest document chunks
+3. Return the top K results
+
+```javascript
+// Create a retriever that returns top 5 most relevant chunks
+const retriever = vectorStore.asRetriever({ k: 5 });
+
+// Test it
+const results = await retriever.invoke("What are Java threading interview questions?");
+results.forEach((doc, i) => {
+  console.log(`\n--- Result ${i + 1} (source: ${doc.metadata.source}) ---`);
+  console.log(doc.pageContent.slice(0, 200));
+});
+```
+
+The magic here is **semantic search** — it's not keyword matching. If you ask about "concurrent programming" it will retrieve a chunk that contains "multithreading" because they mean the same thing in vector space. No exact word match needed.
+
+This is fundamentally different from a SQL `LIKE` query or a full-text search. It understands *meaning*, not just words.
+
+> 📌 **Credit:** The concept of using dense vector embeddings for semantic retrieval was popularised in the paper [*Dense Passage Retrieval for Open-Domain Question Answering*](https://arxiv.org/abs/2004.04906) by Karpukhin et al. (Facebook AI, 2020). LangChain made it accessible for application developers.
+
+---
+
+## 4. Generation — Putting It All Together
+
+Retrieval gives you chunks. Generation means stitching those chunks into a prompt and letting the LLM answer.
+
+```javascript
+import { ChatOpenAI } from "@langchain/openai";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
+import { createRetrievalChain } from "langchain/chains/retrieval";
+
+const llm = new ChatOpenAI({ model: "gpt-4o-mini" });
+
+// The prompt template — {context} gets filled with retrieved chunks
+const prompt = ChatPromptTemplate.fromTemplate(`
+You are a helpful assistant. Answer the question using ONLY the provided context.
+If the answer isn't in the context, say "I don't have that information in my documents."
+
+Context:
+{context}
+
+Question: {input}
+
+Answer:
+`);
+
+// Combine docs chain: takes chunks + question → formatted prompt → LLM
+const combineDocsChain = await createStuffDocumentsChain({ llm, prompt });
+
+// Full RAG chain: question → retrieval → generation
+const ragChain = await createRetrievalChain({
+  retriever,
+  combineDocsChain,
+});
+
+// Run it
+const response = await ragChain.invoke({
+  input: "What are the top Java threading questions?",
+});
+
+console.log(response.answer);
+// → "Based on your documents, the top Java threading questions are:
+//    1. What is the difference between Thread and Runnable?..."
+```
+
+Notice the prompt instruction: *"Answer using ONLY the provided context."* This is critical. Without it, the LLM will mix its training knowledge with your documents — and you won't know which is which. This instruction forces grounded, verifiable answers.
+
+---
+
+## 5. Multi-Query — Getting Better Results With Less Effort
+
+Here's a subtle but powerful problem: if your user asks "how do I fix memory leaks in Java?", that's one query. But your documents might contain the answer phrased as "Java heap space issues", "garbage collection optimization", or "OutOfMemoryError solutions". A single vector search might miss some of these.
+
+**Multi-Query** solves this by asking the LLM to generate 3-5 different versions of the same question, running all of them, and combining the results.
+
+```javascript
+import { MultiQueryRetriever } from "langchain/retrievers/multi_query";
+
+const multiQueryRetriever = MultiQueryRetriever.fromLLM({
+  llm,
+  retriever: vectorStore.asRetriever(),
+  verbose: true, // shows generated queries in console
+});
+
+// Internally generates:
+// 1. "how to fix memory leaks in Java?"
+// 2. "Java OutOfMemoryError solutions"
+// 3. "Java heap space and garbage collection issues"
+// 4. "prevent memory leaks Java application"
+// Runs all 4 queries, deduplicates results
+const results = await multiQueryRetriever.invoke(
+  "how do I fix memory leaks in Java?"
+);
+```
+
+The result is broader, more comprehensive retrieval — with no extra code from your side. The LLM does the query expansion for you.
+
+> 💡 This is the simplest RAG improvement with the biggest bang for buck. Add it once your basic RAG works.
+
+---
+
+## Putting It Together — What I'm Building
+
+With these 5 concepts understood, here's the project I'm building:
+
+**An AI coach that answers questions from my own interview prep notes.**
+
+I have 50+ markdown files covering Java, Spring Boot, React, SQL, System Design, and more. Instead of scrolling through them manually before an interview, I'll ask:
+
+> *"Give me the top 5 Spring Boot interview questions at a senior level"*
+
+And the system will search my actual notes, retrieve the relevant sections, and give me a focused answer — sourced from content I already trust.
+
+The architecture maps exactly to what we covered:
+
+```
+50+ markdown files in /interview_prep
+         ↓    [Indexing — done once]
+RecursiveCharacterTextSplitter (chunk size: 800, overlap: 150)
+         ↓
+text-embedding-3-small → vectors
+         ↓
+Supabase pgvector table
+         ↓    [Query — every question]
+User question → MultiQueryRetriever (3 variations)
+         ↓
+Top 6 chunks retrieved
+         ↓
+GPT-4o-mini with grounded prompt
+         ↓
+Streamed answer → React UI on this site
+```
+
+Post incoming when it's live. 🚀
+
+---
+
+## Key Takeaways
+
+If you got lost anywhere, here's what to hold on to:
+
+1. **RAG = store documents as vectors, search by meaning, inject into prompt**
+2. **Indexing happens once** — load, split, embed, store
+3. **Retrieval is semantic** — finds meaning, not just keywords
+4. **Grounded prompts matter** — always tell the LLM to answer only from context
+5. **Multi-Query is a free upgrade** — let the LLM generate query variations
+
+The rest of the 2.5-hour video (RAPTOR, ColBERT, CRAG, Adaptive RAG) is advanced optimisation for when your basic pipeline works. Don't jump to those yet.
+
+Build the simple version first. Then make it better.
+
+---
+
+## Resources & Credits
+
+| Resource | Author / Creator | Link |
+|---|---|---|
+| RAG from Scratch (full course) | **AI Jason** | [YouTube](https://www.youtube.com/watch?v=sVcwVQRHIc8) |
+| LangChain.js Documentation | LangChain Team | [js.langchain.com](https://js.langchain.com/docs/introduction/) |
+| Dense Passage Retrieval paper | **Karpukhin et al., Facebook AI (2020)** | [arXiv:2004.04906](https://arxiv.org/abs/2004.04906) |
+| OpenAI Embeddings API | **OpenAI** | [platform.openai.com/docs/guides/embeddings](https://platform.openai.com/docs/guides/embeddings) |
+| Supabase pgvector guide | **Supabase** | [supabase.com/docs/guides/ai/vector-columns](https://supabase.com/docs/guides/ai/vector-columns) |
+| Multi-Query Retriever docs | LangChain Team | [js.langchain.com/docs/how_to/MultiQueryRetriever](https://js.langchain.com/docs/how_to/MultiQueryRetriever/) |
+| What are LLMs? (prerequisite) | **Andrej Karpathy** | [YouTube](https://www.youtube.com/watch?v=zjkBMFhNj_g) |
+
+---
+
+*This is part of my 6-month journey from full-stack developer to AI-native engineer. If you're on a similar path, follow along on [GitHub](https://github.com/yourusername) and [LinkedIn](https://linkedin.com/in/yourusername).*

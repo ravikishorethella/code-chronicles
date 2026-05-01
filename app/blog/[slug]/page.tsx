@@ -60,7 +60,7 @@ export default async function PostPage({
       </header>
 
       {/* Post Content */}
-      <article className="prose prose-indigo prose-lg max-w-none dark:prose-invert prose-headings:font-bold prose-code:rounded prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-sm dark:prose-code:bg-gray-800">
+      <article className="prose prose-indigo prose-lg max-w-none dark:prose-invert prose-headings:font-bold prose-img:rounded-xl prose-img:shadow-md prose-a:text-indigo-600 dark:prose-a:text-indigo-400">
         <MDXRemote
           source={post.content}
           options={{

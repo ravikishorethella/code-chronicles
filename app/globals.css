@@ -28,3 +28,46 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+/* ── Code block styles — light mode ── */
+.prose pre {
+  background-color: #1e1e2e !important;
+  color: #cdd6f4 !important;
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  border: 1px solid #313244;
+}
+
+.prose pre code {
+  background-color: transparent !important;
+  color: inherit !important;
+  font-size: inherit;
+  padding: 0;
+  border-radius: 0;
+  white-space: pre;
+}
+
+/* Inline code — light mode */
+.prose code:not(pre code) {
+  background-color: #f0f0f5 !important;
+  color: #4f46e5 !important;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.875em;
+  font-weight: 500;
+}
+
+/* ── Code block styles — dark mode ── */
+.dark .prose pre {
+  background-color: #11111b !important;
+  color: #cdd6f4 !important;
+  border-color: #45475a;
+}
+
+.dark .prose code:not(pre code) {
+  background-color: #313244 !important;
+  color: #a6e3a1 !important;
+}
