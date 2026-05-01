@@ -1,0 +1,218 @@
+---
+title: "What I Learned About How LLMs Work — A Developer's Summary"
+date: "2026-04-30"
+excerpt: "After watching Andrej Karpathy's Intro to LLMs, here's my plain-English breakdown of how Large Language Models are built, trained, and why they think the way they do."
+tags: ["LLM", "AI Agents", "OpenAI"]
+draft: false
+---
+
+# What I Learned About How LLMs Work
+
+> 📌 **Credit:** This post is my personal learning summary based on [**Andrej Karpathy's**](https://karpathy.ai) talk — [*Intro to Large Language Models*](https://www.youtube.com/watch?v=zjkBMFhNj_g) (YouTube, 2023) and his follow-up [*State of GPT*](https://www.youtube.com/watch?v=bZQun8Y4L2A) (Microsoft Build, 2023). All core concepts originate from his work. The System 1 / System 2 framework comes from [**Daniel Kahneman's**](https://en.wikipedia.org/wiki/Daniel_Kahneman) book *Thinking, Fast and Slow* (2011).
+
+---
+
+![A visualization of a neural network with glowing nodes and connections representing how an LLM processes information](https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=900&auto=format&fit=crop&q=80)
+*A neural network — the architectural foundation of every LLM. Photo: [Unsplash](https://unsplash.com)*
+
+---
+
+## The 3 Phases of Building an LLM
+
+Here is the complete pipeline from raw internet data to the ChatGPT or Claude you use every day:
+
+```
+RAW INTERNET DATA (100TB+)
+         ↓
+  [ Phase 1: Pretraining ]     ← weeks of GPU compute, $10M–$100M cost
+         ↓
+     BASE MODEL                ← knows everything, follows nobody
+         ↓
+  [ Phase 2: Fine-Tuning ]     ← human-written Q&A examples
+         ↓
+     SFT MODEL                 ← answers questions, but can still be harmful
+         ↓
+  [ Phase 3: RLHF ]            ← human preference rankings
+         ↓
+  ASSISTANT MODEL              ← ChatGPT, Claude, Gemini
+```
+
+---
+
+### Phase 1 — Pretraining (The Base Model)
+
+![Servers and data centers representing large-scale GPU compute clusters used for LLM training](https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80)
+*Massive GPU/TPU clusters run for weeks to train a base model. Photo: [Unsplash](https://unsplash.com)*
+
+The internet is crawled — Wikipedia, books, GitHub, Reddit, Stack Overflow — everything gets cleaned and compressed into GPU/TPU compute clusters. The model does **one thing only**:
+
+> **Predict the next token.**
+
+That's it. Billions of parameters adjust themselves over weeks to get better at this single task. After compute costing tens of millions of dollars, you get a **base model**.
+
+A base model is **not** a chatbot. It's a document completer. Ask it a question and it might just continue writing more questions instead of answering — because that's what "the next token" looks like statistically.
+
+> 💡 **Key insight:** The model is a **lossy compression of the internet**. 100TB of text → ~100GB of floating-point numbers (weights). It doesn't store facts like a database — it reconstructs them from patterns.
+
+---
+
+### Phase 2 — Supervised Fine-Tuning (SFT)
+
+Human contractors write thousands of high-quality question-answer pairs:
+
+```
+Q: "What is the capital of France?"
+A: "The capital of France is Paris."
+
+Q: "Explain recursion to a 10-year-old."
+A: "Imagine you're looking for your keys..."
+```
+
+The model trains on these examples to learn the **format** of being helpful — how to structure an answer, not just how to complete arbitrary text. The result is an *SFT model* — better, but still capable of generating harmful or incorrect responses confidently.
+
+---
+
+### Phase 3 — RLHF (Reinforcement Learning from Human Feedback)
+
+This is the step I initially missed — and it's arguably the **most important** one.
+
+![Two people comparing options, representing human raters evaluating and ranking AI model responses](https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=900&auto=format&fit=crop&q=80)
+*Human raters compare model responses — "which answer is better, A or B?" — to train the Reward Model. Photo: [Unsplash](https://unsplash.com)*
+
+**How it works:**
+
+1. The model generates two different responses to the same prompt
+2. Human raters choose which response is better
+3. A separate **Reward Model** is trained on thousands of these comparisons
+4. The main LLM is then trained using Reinforcement Learning to **maximize the reward score**
+5. Result: a model that is helpful, harmless, and honest
+
+This is what made ChatGPT feel so different from everything before it. Before RLHF, language models existed — after RLHF, *assistants* existed.
+
+> 📌 **Credit:** RLHF was popularised in the context of LLMs by [OpenAI's InstructGPT paper (2022)](https://arxiv.org/abs/2203.02155) — Ouyang et al. Anthropic's variant using AI feedback instead of human feedback is called **RLAIF**.
+
+---
+
+## Tokens, Not Words
+
+The model doesn't see words — it sees **tokens**, which are chunks of roughly 3–4 characters each.
+
+```txt
+Input:  "unhappiness"
+
+Tokens: [ "un" | "hap" | "pi" | "ness" ]
+Count:    1       2       3       4      = 4 tokens
+```
+
+Here are more examples:
+
+```txt
+"Hello world"          →  ["Hello", " world"]              = 2 tokens
+"ChatGPT is amazing"   →  ["Chat", "G", "PT", " is", ...]  = 5 tokens
+"日本語"               →  ["日", "本", "語"]                = 3 tokens
+```
+
+**Why this matters for you as a builder:**
+
+| What | Impact |
+|---|---|
+| API pricing | Charged per token, not per word |
+| Context window | Limits in tokens (128K tokens ≈ ~90K words) |
+| Weird failures | Model can't reliably count letters — it never sees individual characters |
+
+> 🔧 **Try it yourself:** Play with OpenAI's free [Tokenizer tool](https://platform.openai.com/tokenizer) to see how any text gets split into tokens in real time.
+
+---
+
+## System 1 vs System 2 Thinking
+
+> 📌 **Credit:** The System 1 / System 2 framework comes from Nobel laureate [**Daniel Kahneman's**](https://en.wikipedia.org/wiki/Daniel_Kahneman) book [*Thinking, Fast and Slow*](https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow) (2011). Andrej Karpathy applies this framework to LLMs in his talks.
+
+![System 1 vs System 2 thinking — fast instinctive responses vs slow deliberate reasoning applied to LLMs](https://substackcdn.com/image/fetch/$s_!5GfT!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcd7fba01-eae0-41e6-b811-be3d3d40a56c_1600x840.png)
+*System 1 (fast, instinctive) vs System 2 (slow, deliberate) applied to LLMs. Image credit: [Zahiruddin Tavargere — The Adaptive Engineer](https://newsletter.adaptiveengineer.com/p/how-to-unlock-system-2-thinking-in)*
+
+| | System 1 | System 2 |
+|---|---|---|
+| **Speed** | Instant | Slow, deliberate |
+| **Nature** | Pattern-matching | Step-by-step reasoning |
+| **Human example** | Recognising a face | Solving a chess problem |
+| **LLM equivalent** | Single forward pass → answer | Reasoning models (o3, R1) |
+
+**Most LLMs today are System 1.** A single forward pass through the neural network generates the next token — no backtracking, no verification, no "let me check that."
+
+The industry is actively building **System 2** capability into models:
+- **OpenAI o3 / o4** — inference-time compute, internal reasoning traces
+- **DeepSeek R1** — open-source reasoning model trained with RL
+- **Gemini 2.5 Pro Deep Think** — extended thinking mode
+
+---
+
+## Why RAG Exists
+
+Since the model is a **frozen** compression of past training data, it has hard limitations:
+
+```
+❌ Doesn't know about events after its training cutoff
+❌ Doesn't know your private documents or company data
+❌ Can't look things up — it reconstructs from learned patterns
+❌ Will confidently "hallucinate" when it doesn't know something
+```
+
+**RAG (Retrieval-Augmented Generation)** solves this:
+
+![A diagram showing documents being searched and retrieved before being fed into an AI model, representing RAG architecture](https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=900&auto=format&fit=crop&q=80)
+*RAG gives the LLM access to real, current documents at query time — like giving it open-book access before answering. Photo: [Unsplash](https://unsplash.com)*
+
+```
+User question
+      ↓
+Convert to embedding (vector)
+      ↓
+Search vector database for similar document chunks
+      ↓
+Inject retrieved chunks into the prompt as context
+      ↓
+LLM answers using real, specific, up-to-date information
+```
+
+That's why my next project is building a RAG chatbot that can answer questions from my own documents. 🚀
+
+---
+
+## What I Initially Got Wrong
+
+When I first summarised my understanding, I had ~75% of the picture. Here's what I missed:
+
+| Concept | Status |
+|---|---|
+| Pretraining on internet data | ✅ Had it |
+| Fine-tuning for Q&A | ✅ Had it |
+| System 1 thinking dominance | ✅ Had it |
+| **RLHF** | ❌ Missed — the most important step |
+| **Tokens vs words** | ❌ Missed — critical for building |
+| **Model as lossy compression** | ❌ Missed — core mental model |
+
+This is exactly why learning in public is valuable — articulating what you know reveals what you don't.
+
+---
+
+## Key Takeaway
+
+> An LLM is not a database. It is not a search engine. It is a **lossy compression of human knowledge**, decompressed on demand via a query. RLHF is what turns that compression into a *useful assistant*. RAG is what gives it access to knowledge it was never trained on.
+
+---
+
+## Resources & Credits
+
+| Resource | Author | Link |
+|---|---|---|
+| Intro to Large Language Models (video) | **Andrej Karpathy** | [YouTube](https://www.youtube.com/watch?v=zjkBMFhNj_g) |
+| State of GPT (video) | **Andrej Karpathy** | [YouTube](https://www.youtube.com/watch?v=bZQun8Y4L2A) |
+| Thinking, Fast and Slow (book) | **Daniel Kahneman** | [Wikipedia](https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow) |
+| InstructGPT paper (RLHF) | **Ouyang et al., OpenAI** | [arXiv](https://arxiv.org/abs/2203.02155) |
+| OpenAI Tokenizer tool | **OpenAI** | [platform.openai.com/tokenizer](https://platform.openai.com/tokenizer) |
+| LangChain for LLM App Dev (course) | **DeepLearning.AI** | [deeplearning.ai](https://www.deeplearning.ai/short-courses/langchain-for-llm-application-development/) |
+
+---
+
+*This is part of my 6-month journey from full-stack developer to AI-native engineer. Follow along on [GitHub](https://github.com/yourusername) and [LinkedIn](https://linkedin.com/in/yourusername).*

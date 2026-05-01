@@ -1,0 +1,43 @@
+---
+title: "Building My First RAG Chatbot with LangChain.js and Supabase"
+date: "2026-05-15"
+excerpt: "Step-by-step walkthrough of building a Retrieval-Augmented Generation chatbot using LangChain.js, OpenAI, and Supabase pgvector — all from a React/Java developer's perspective."
+tags: ["RAG", "LangChain", "Supabase", "OpenAI", "JavaScript"]
+draft: true
+---
+
+# Building My First RAG Chatbot
+
+> 🚧 **Draft** — This post is in progress as I complete Month 1 of my AI learning roadmap.
+
+## What I'm Building
+
+A chatbot that can answer questions about my own interview prep documents using Retrieval-Augmented Generation (RAG).
+
+## Tech Stack
+
+- **LangChain.js** — orchestration
+- **OpenAI GPT-4o-mini** — the LLM
+- **Supabase pgvector** — vector database
+- **React + Vercel AI SDK** — frontend with streaming
+- **Node.js / Express** — backend API
+
+## Architecture
+
+```
+User question
+    ↓
+Generate embedding (text-embedding-3-small)
+    ↓
+Vector similarity search in Supabase
+    ↓
+Retrieve top 5 relevant document chunks
+    ↓
+Inject into prompt as context
+    ↓
+GPT-4o-mini generates answer
+    ↓
+Stream response to React UI
+```
+
+*More coming soon as I build this out...*
