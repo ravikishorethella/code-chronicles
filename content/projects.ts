@@ -10,13 +10,13 @@ export interface Project {
 
 const projects: Project[] = [
   {
-    title: "RAG Chatbot — Chat with Your Docs",
+    title: "RAG Chatbot — Java Interview Coach AI",
     description:
-      "A Retrieval-Augmented Generation chatbot that answers questions from your own documents. Built with LangChain.js, OpenAI GPT-4o-mini, Supabase pgvector, and a React streaming frontend.",
-    tags: ["RAG", "LangChain", "OpenAI", "Supabase", "React", "JavaScript"],
-    github: "https://github.com/yourusername/rag-chatbot",
-    liveUrl: "https://rag-chatbot-demo.vercel.app",
-    status: "in-progress",
+      "A Retrieval-Augmented Generation chatbot that answers Java interview questions from personal markdown notes. Built with Next.js 16, FastAPI, LangChain, Groq (Llama 3.1), HuggingFace Endpoint Embeddings, and Neon Postgres with pgvector. Frontend and Python backend co-deployed as a Vercel monorepo.",
+    tags: ["RAG", "LangChain", "Groq", "FastAPI", "Next.js", "Neon", "pgvector", "HuggingFace"],
+    github: "https://github.com/ravikishorethella/RAG-Chatbot",
+    liveUrl: "https://rag-chatbot-rkthella.vercel.app",
+    status: "completed",
     highlight: true,
   },
   {
