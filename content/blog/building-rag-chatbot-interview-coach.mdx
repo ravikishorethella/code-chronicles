@@ -1,0 +1,351 @@
+---
+title: "I Built a RAG Chatbot That Answers Java Interview Questions From My Own Notes"
+excerpt: "How I went from theory to a working AI chatbot in production — using Next.js, FastAPI, Groq, HuggingFace embeddings, and Neon Postgres with pgvector."
+date: "2026-05-04"
+tags: ["RAG", "AI", "FastAPI", "Next.js", "LangChain", "Vector DB"]
+draft: false
+---
+
+# I Built a RAG Chatbot That Answers Java Interview Questions From My Own Notes
+
+A few weeks ago I was watching Andrej Karpathy's videos on LLMs and AI Jason's deep-dive on RAG, taking notes, and thinking "this all makes sense in theory." This week I actually built it. A working, deployed chatbot that answers Java interview questions by retrieving answers directly from my own markdown notes.
+
+Here's exactly how I built it, what I learned, and the mistakes I made.
+
+---
+
+## What I Built
+
+**Java Interview Coach AI** — a chatbot that:
+- Takes a question like *"What is the difference between HashMap and ConcurrentHashMap?"*
+- Searches my personal `interview_prep` markdown files using vector similarity
+- Returns a precise, context-aware answer from my own notes
+- Is live at [rag-chatbot-rkthella.vercel.app](https://rag-chatbot-rkthella.vercel.app)
+
+![Java Interview Coach AI screenshot — a chat interface with a Java-themed header and an answer about threading](/images/blog/rag-chatbot-screenshot.png)
+
+---
+
+## The Stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Frontend** | Next.js (App Router) | Already familiar, fast to build |
+| **Backend** | FastAPI (Python) | Best ecosystem for AI/ML libraries |
+| **Embeddings** | HuggingFace `sentence-transformers` | Free, runs locally, no API cost |
+| **Vector DB** | Neon + pgvector | Serverless Postgres, free tier, SQL I already know |
+| **LLM** | Groq (Llama 3) | ~10x faster than OpenAI, generous free tier |
+| **Deployment** | Vercel (frontend) + Railway (FastAPI) | Vercel is instant, Railway is great for Python APIs |
+
+---
+
+## How RAG Works In This App
+
+Before I explain the code, let me explain the mental model. RAG has two phases:
+
+**Phase 1 — Indexing (runs once)**
+```
+my_notes.md  →  split into chunks  →  embed each chunk  →  store in Neon pgvector
+```
+
+**Phase 2 — Retrieval + Generation (runs on every question)**
+```
+user question  →  embed question  →  find similar chunks in Neon  →  send chunks + question to Groq  →  return answer
+```
+
+The key insight: the LLM never "reads" your files. It only reads the 3–5 most relevant chunks retrieved by vector similarity. That's what keeps it accurate and fast.
+
+---
+
+## Step 1 — Setting Up Neon with pgvector
+
+Neon is a serverless Postgres database with built-in support for the `pgvector` extension. You get a free tier with 512MB storage — more than enough for this use case.
+
+```sql
+-- Enable the extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Create the table for storing embeddings
+CREATE TABLE documents (
+  id SERIAL PRIMARY KEY,
+  content TEXT,
+  embedding vector(384),  -- 384 dimensions for all-MiniLM-L6-v2
+  source TEXT,            -- which .md file it came from
+  metadata JSONB
+);
+
+-- Create an index for fast similarity search
+CREATE INDEX ON documents USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 100);
+```
+
+The `vector(384)` type is what pgvector adds. It stores a list of 384 numbers that mathematically represents the meaning of a text chunk.
+
+---
+
+## Step 2 — The Indexing Script (FastAPI + HuggingFace)
+
+```python
+# ingest.py
+from sentence_transformers import SentenceTransformer
+import psycopg2
+import os
+import glob
+
+model = SentenceTransformer('all-MiniLM-L6-v2')  # free, runs locally, 384 dims
+
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50):
+    """Split text into overlapping chunks."""
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), chunk_size - overlap):
+        chunk = ' '.join(words[i:i + chunk_size])
+        chunks.append(chunk)
+    return chunks
+
+def ingest_markdown_files(folder_path: str):
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    cur = conn.cursor()
+
+    md_files = glob.glob(f"{folder_path}/**/*.md", recursive=True)
+    print(f"Found {len(md_files)} markdown files")
+
+    for file_path in md_files:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        chunks = chunk_text(content)
+        embeddings = model.encode(chunks)  # batch encode all chunks
+
+        for chunk, embedding in zip(chunks, embeddings):
+            cur.execute(
+                "INSERT INTO documents (content, embedding, source) VALUES (%s, %s, %s)",
+                (chunk, embedding.tolist(), file_path)
+            )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Ingestion complete!")
+
+if __name__ == "__main__":
+    ingest_markdown_files("./interview_prep")
+```
+
+I ran this once locally. It processed all my markdown files, split them into 500-word chunks with 50-word overlap (so context isn't cut off at boundaries), and stored the embeddings in Neon.
+
+**Why HuggingFace `all-MiniLM-L6-v2`?**
+- Completely free, no API key needed
+- 384-dimensional vectors (smaller = faster search)
+- Great quality for technical Q&A retrieval
+- Used in thousands of production RAG systems
+
+---
+
+## Step 3 — The FastAPI Backend
+
+```python
+# main.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sentence_transformers import SentenceTransformer
+from groq import Groq
+import psycopg2
+import os
+
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+groq_client = Groq(api_key=os.environ['GROQ_API_KEY'])
+
+class ChatRequest(BaseModel):
+    question: str
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    # 1. Embed the question
+    question_embedding = embed_model.encode(request.question).tolist()
+
+    # 2. Find top 5 similar chunks from Neon
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT content, source, 1 - (embedding <=> %s::vector) AS similarity
+        FROM documents
+        ORDER BY embedding <=> %s::vector
+        LIMIT 5
+    """, (question_embedding, question_embedding))
+    
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # 3. Build context from retrieved chunks
+    context = "\n\n---\n\n".join([row[0] for row in results])
+
+    # 4. Send to Groq (Llama 3) with context
+    response = groq_client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[
+            {
+                "role": "system",
+                "content": """You are a Java interview coach. Answer the question using ONLY 
+                the context provided from the candidate's personal notes. Be concise and clear.
+                If the answer isn't in the context, say so honestly."""
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion: {request.question}"
+            }
+        ]
+    )
+
+    return {
+        "answer": response.choices[0].message.content,
+        "sources": [row[1] for row in results]  # which .md files were used
+    }
+```
+
+The `<=>` operator in the SQL query is pgvector's cosine distance operator. Lower distance = more similar. The query finds the 5 most semantically similar chunks to the user's question in milliseconds.
+
+---
+
+## Step 4 — The Next.js Frontend
+
+The frontend is straightforward — a chat interface that calls the FastAPI backend.
+
+```typescript
+// app/api/chat/route.ts  — proxies to FastAPI to hide the backend URL
+export async function POST(request: Request) {
+  const body = await request.json()
+  
+  const response = await fetch(`${process.env.FASTAPI_URL}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  
+  const data = await response.json()
+  return Response.json(data)
+}
+```
+
+```typescript
+// components/ChatInterface.tsx (simplified)
+'use client'
+import { useState } from 'react'
+
+export default function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function sendMessage() {
+    if (!input.trim()) return
+    setLoading(true)
+    
+    const userMessage = { role: 'user', content: input }
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: input })
+    })
+    
+    const data = await res.json()
+    setMessages(prev => [...prev, { role: 'assistant', content: data.answer }])
+    setLoading(false)
+  }
+
+  return (
+    <div className="chat-container">
+      <div className="messages">
+        {messages.map((m, i) => (
+          <div key={i} className={`message ${m.role}`}>{m.content}</div>
+        ))}
+        {loading && <div className="message assistant">Thinking...</div>}
+      </div>
+      <div className="input-row">
+        <input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          placeholder="Ask a Java interview question..." />
+        <button onClick={sendMessage}>Ask Coach</button>
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## What I Learned
+
+### 1. Chunk overlap matters more than I expected
+My first attempt had no overlap between chunks. Questions that spanned a Q&A boundary in the markdown (like a multi-part answer) would get cut off. Adding 50-word overlap fixed this.
+
+### 2. The system prompt is critical
+Without a strong system prompt saying "only use the provided context," the LLM would happily answer from its training data and ignore my notes entirely. RAG only works if you explicitly constrain the model.
+
+### 3. Groq is genuinely fast
+I expected latency. Groq returns answers in under 2 seconds. Their custom LPU (Language Processing Unit) hardware is not a gimmick — it's noticeably faster than OpenAI's API for the same model quality.
+
+### 4. Neon's free tier is production-ready
+No cold starts, global edge replicas, branch-based dev/prod workflow. For a side project this size it's effectively free infrastructure with zero management overhead.
+
+### 5. Vector search ≠ keyword search
+The most satisfying moment: I asked *"what's the difference between notify() and notifyAll()?"* — and it correctly retrieved chunks about Java threading even though the words "notify" and "notifyAll" didn't appear verbatim in every chunk. That's vector similarity at work.
+
+---
+
+## The Architecture Diagram
+
+```
+User question
+     │
+     ▼
+Next.js frontend
+     │  POST /api/chat
+     ▼
+Next.js API route (proxy)
+     │  POST to FastAPI
+     ▼
+FastAPI backend
+     ├── HuggingFace embed the question
+     ├── Neon pgvector: find top 5 similar chunks
+     └── Groq Llama 3: generate answer with context
+          │
+          ▼
+     Answer back to user
+```
+
+---
+
+## What's Next
+
+This was Month 1, Week 3 of my AI learning roadmap. Next steps:
+
+- **Add conversation memory** — right now each question is stateless. Using LangChain's `ConversationBufferMemory` to make it contextual across turns
+- **Add source citations in the UI** — the API already returns source filenames, just need to display them
+- **Expand to all subjects** — right now it's Java-heavy. I want to add Python, System Design, and Behavioral questions
+- **Evaluate retrieval quality** — use RAGAS (RAG Assessment framework) to measure precision and recall
+
+---
+
+## Try It Yourself
+
+The chatbot is live: **[rag-chatbot-rkthella.vercel.app](https://rag-chatbot-rkthella.vercel.app)**
+
+Ask it something like:
+- *"What is HashMap?"*
+- *"Explain Java memory model"*
+- *"What is Multithreading?"*
+
+The whole thing — from watching Karpathy's videos to a working deployed product — took about 2 weeks of evenings and weekends alongside a full-time job. If I can do it, you can too.
+
+---
+
+*Credits: AI Jason's RAG from Scratch series, Harrison Chase (LangChain), Nils Reimers (sentence-transformers), the pgvector team at Supabase/Neon.*
