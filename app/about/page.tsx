@@ -19,7 +19,7 @@ const experience = [
     company: "Legacy.com - Contract",
     period: "2018 – 2018",
     description:
-      "Developed RESTful APIs and React-based frontends. Implemented CI/CD pipelines and improved test coverage from 20% to 80%.",
+      "Created a component library for the organization using React Storybook which helps to develop the UI components in isolation. Integrated Lerna with react storybook for splitting up the large codebase into separate independently versioned packages.",
     tech: ["HTML5", "CSS3", "JavaScript", "React JS", "Node.js", "MongoDB", "Express", "WebPack", "Redux", "Axios",
 "GraphQL", "React StoryBook", "Ant", "React-Router", "Bootstrap", "SAAS", "Bit bucket", "Jenkins"],
   },
