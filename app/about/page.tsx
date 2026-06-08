@@ -7,28 +7,21 @@ export const metadata = {
 
 const experience = [
   {
-    role: "Senior Full Stack Developer", // TODO: Replace with your actual roles
-    company: "Company Name",
-    period: "2022 – Present",
+    role: "Software Development Lead", // TODO: Replace with your actual roles
+    company: "Verizon - Contract",
+    period: "2018 – Present",
     description:
-      "Building scalable enterprise applications with Java/Spring Boot backend and React frontend. Led a team of 4 developers.",
-    tech: ["Java", "Spring Boot", "React", "PostgreSQL", "Docker", "GCP"],
+      "Building scalable enterprise applications with Java/Spring Boot backend and React frontend. Led a team of 5-6 developers at any time and in 2025 as part of the DB Migration project, I have led over 30 people (Onshore & Offshore) in delievering the requirements.",
+    tech: ["Java", "Spring Boot", "React", "GeoServer", "Leaflet.js", "PostgreSQL", "MySQL"],
   },
   {
-    role: "Full Stack Developer",
-    company: "Company Name",
-    period: "2019 – 2022",
+    role: "React Developer",
+    company: "Legacy.com - Contract",
+    period: "2018 – 2018",
     description:
       "Developed RESTful APIs and React-based frontends. Implemented CI/CD pipelines and improved test coverage from 20% to 80%.",
-    tech: ["Java", "Spring MVC", "JavaScript", "MySQL", "Jenkins"],
-  },
-  {
-    role: "Software Developer",
-    company: "Company Name",
-    period: "2017 – 2019",
-    description:
-      "Started career building web applications and learning enterprise Java development patterns.",
-    tech: ["Java", "JSP", "jQuery", "Oracle DB"],
+    tech: ["HTML5", "CSS3", "JavaScript", "React JS", "Node.js", "MongoDB", "Express", "WebPack", "Redux", "Axios",
+"GraphQL", "React StoryBook", "Ant", "React-Router", "Bootstrap", "SAAS", "Bit bucket", "Jenkins"],
   },
 ];
 
@@ -100,15 +93,22 @@ export default function AboutPage() {
           Certifications
         </h2>
         <div className="space-y-4">
-          <div className="flex items-center gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <span className="text-3xl">☁️</span>
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                Google Cloud Associate Cloud Engineer
-              </p>
-              <p className="text-sm text-gray-500">Google Cloud · 2024</p>
+          <a
+            href="https://www.credly.com/badges/f3037e55-6838-4a70-9204-492de4547f4a/public_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block transition-all hover:scale-105"
+          >
+            <div className="flex items-center gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:border-indigo-500 dark:hover:bg-indigo-900/10">
+              <span className="text-3xl">☁️</span>
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  Google Cloud Associate Engineer
+                </p>
+                <p className="text-sm text-gray-500">Google Cloud · 2024</p>
+              </div>
             </div>
-          </div>
+          </a>
           {/* TODO: Add AWS AI Practitioner after Month 4 */}
         </div>
       </section>
