@@ -175,6 +175,14 @@ export default function AboutPage() {
             LinkedIn
           </a>
           <a
+            href={siteConfig.author.leetcode}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+          >
+            LeetCode
+          </a>
+          <a
             href={`mailto:${siteConfig.author.email}`}
             className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:border-indigo-600 hover:text-indigo-600 transition-colors dark:border-gray-600 dark:text-gray-300"
           >

@@ -1,0 +1,348 @@
+---
+title: "Day 2 — Open/Closed Principle (OCP)"
+day: 2
+phase: "SOLID Design Principles"
+date: "2026-07-01"
+completed: false
+tags: ["SOLID", "Design Patterns", "OOP", "Strategy Pattern"]
+---
+
+# Day 2 — Open/Closed Principle (OCP)
+
+## 📋 Topics Covered
+
+- **O** — Open/Closed Principle (OCP)
+- Software entities should be **open for extension** but **closed for modification**
+- How to achieve OCP
+- Strategy pattern as OCP implementation
+- Real-world examples
+
+---
+
+## 📚 My Learning Notes
+
+### What is OCP?
+
+> Software entities (classes, modules, functions) should be **open for extension** but **closed for modification**.
+
+**In simple terms:**
+- ✅ **Open for extension** — You can add new functionality
+- ❌ **Closed for modification** — You should NOT change existing code
+
+### Why It Matters
+- Adding features doesn't break existing code
+- Reduces risk of introducing bugs
+- Easier to maintain and test
+- Encourages use of interfaces and abstract classes
+
+### How to Achieve OCP
+1. Use **interfaces** and **abstract classes**
+2. Use **inheritance** wisely
+3. Use **composition over inheritance** when appropriate
+4. Apply **design patterns** (Strategy, Template Method, etc.)
+
+---
+
+## 💻 Practice Code
+
+### ❌ Bad Example (Violates OCP)
+
+```java
+// Every time we add a discount type, we MODIFY this class
+public class DiscountCalculator {
+    public double calculateDiscount(String discountType, double price) {
+        if (discountType.equals("PERCENTAGE")) {
+            return price * 0.10; // 10% off
+        } else if (discountType.equals("FIXED")) {
+            return 50.0; // $50 off
+        } else if (discountType.equals("SEASONAL")) {
+            return price * 0.20; // 20% off
+        }
+        
+        // What if we need to add BLACK_FRIDAY discount?
+        // We have to MODIFY this method again!
+        // else if (discountType.equals("BLACK_FRIDAY")) { ... }
+        
+        return 0;
+    }
+}
+```
+
+**Problems:**
+- Every new discount type requires modifying `calculateDiscount()`
+- Risk of breaking existing discount logic
+- Hard to test each discount type independently
+- Violates OCP — class not closed for modification
+
+---
+
+### ✅ Good Example (Following OCP with Strategy Pattern)
+
+```java
+// 1. Define discount strategy interface
+public interface DiscountStrategy {
+    double calculateDiscount(double price);
+}
+
+// 2. Implement concrete strategies
+public class PercentageDiscount implements DiscountStrategy {
+    private double percentage;
+    
+    public PercentageDiscount(double percentage) {
+        this.percentage = percentage;
+    }
+    
+    @Override
+    public double calculateDiscount(double price) {
+        return price * percentage;
+    }
+}
+
+public class FixedDiscount implements DiscountStrategy {
+    private double amount;
+    
+    public FixedDiscount(double amount) {
+        this.amount = amount;
+    }
+    
+    @Override
+    public double calculateDiscount(double price) {
+        return amount;
+    }
+}
+
+public class SeasonalDiscount implements DiscountStrategy {
+    private double percentage;
+    
+    public SeasonalDiscount(double percentage) {
+        this.percentage = percentage;
+    }
+    
+    @Override
+    public double calculateDiscount(double price) {
+        return price * percentage;
+    }
+}
+
+// 3. Context class uses the strategy
+public class DiscountCalculator {
+    private DiscountStrategy strategy;
+    
+    public DiscountCalculator(DiscountStrategy strategy) {
+        this.strategy = strategy;
+    }
+    
+    public void setStrategy(DiscountStrategy strategy) {
+        this.strategy = strategy;
+    }
+    
+    public double applyDiscount(double price) {
+        double discount = strategy.calculateDiscount(price);
+        return price - discount;
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) {
+        double price = 500.0;
+        
+        // Apply 10% discount
+        DiscountCalculator calculator = new DiscountCalculator(
+            new PercentageDiscount(0.10)
+        );
+        System.out.println("After 10% discount: $" + calculator.applyDiscount(price));
+        
+        // Switch to fixed $50 discount
+        calculator.setStrategy(new FixedDiscount(50.0));
+        System.out.println("After $50 discount: $" + calculator.applyDiscount(price));
+        
+        // Switch to seasonal 20% discount
+        calculator.setStrategy(new SeasonalDiscount(0.20));
+        System.out.println("After seasonal discount: $" + calculator.applyDiscount(price));
+    }
+}
+```
+
+**Benefits:**
+- ✅ **Open for extension** — Add new discount types by creating new classes
+- ✅ **Closed for modification** — Never modify `DiscountCalculator` or existing strategies
+- Easy to test each strategy independently
+- Clean separation of concerns
+
+---
+
+### Adding New Discount (No Modification!)
+
+```java
+// NEW: Black Friday discount (50% off + extra $10)
+public class BlackFridayDiscount implements DiscountStrategy {
+    @Override
+    public double calculateDiscount(double price) {
+        double percentageDiscount = price * 0.50;
+        double extraDiscount = 10.0;
+        return percentageDiscount + extraDiscount;
+    }
+}
+
+// Usage — no changes to existing code!
+calculator.setStrategy(new BlackFridayDiscount());
+System.out.println("Black Friday price: $" + calculator.applyDiscount(price));
+```
+
+Notice: We added a new discount type WITHOUT modifying ANY existing code! ✅
+
+---
+
+## 🎯 Practice Exercise
+
+### Exercise 1: Payment Processing
+
+**Before (Violates OCP):**
+
+```java
+public class PaymentProcessor {
+    public void processPayment(String method, double amount) {
+        if (method.equals("CREDIT_CARD")) {
+            System.out.println("Processing credit card: $" + amount);
+        } else if (method.equals("PAYPAL")) {
+            System.out.println("Processing PayPal: $" + amount);
+        } else if (method.equals("UPI")) {
+            System.out.println("Processing UPI: $" + amount);
+        }
+        // Adding Crypto payment requires modification!
+    }
+}
+```
+
+**After (Follows OCP):**
+
+```java
+public interface PaymentMethod {
+    void processPayment(double amount);
+}
+
+public class CreditCardPayment implements PaymentMethod {
+    @Override
+    public void processPayment(double amount) {
+        System.out.println("Processing credit card: $" + amount);
+    }
+}
+
+public class PayPalPayment implements PaymentMethod {
+    @Override
+    public void processPayment(double amount) {
+        System.out.println("Processing PayPal: $" + amount);
+    }
+}
+
+public class UPIPayment implements PaymentMethod {
+    @Override
+    public void processPayment(double amount) {
+        System.out.println("Processing UPI: $" + amount);
+    }
+}
+
+// NEW: Add crypto without modifying existing code
+public class CryptoPayment implements PaymentMethod {
+    @Override
+    public void processPayment(double amount) {
+        System.out.println("Processing Crypto: $" + amount);
+    }
+}
+
+public class PaymentProcessor {
+    public void process(PaymentMethod method, double amount) {
+        method.processPayment(amount);
+    }
+}
+```
+
+---
+
+### Exercise 2: Real-World Example from My Project
+
+At my work, we had a notification system that violated OCP:
+
+**Before:**
+```java
+public class NotificationService {
+    public void sendNotification(String type, String message) {
+        if (type.equals("EMAIL")) {
+            // send email
+        } else if (type.equals("SMS")) {
+            // send SMS
+        }
+        // Adding Slack notification requires code change!
+    }
+}
+```
+
+**After (My Refactoring):**
+```java
+public interface Notifier {
+    void send(String message);
+}
+
+public class EmailNotifier implements Notifier {
+    public void send(String message) {
+        // email logic
+    }
+}
+
+public class SMSNotifier implements Notifier {
+    public void send(String message) {
+        // SMS logic
+    }
+}
+
+public class SlackNotifier implements Notifier {
+    public void send(String message) {
+        // Slack logic (NEW - no modification needed!)
+    }
+}
+
+public class NotificationService {
+    private List<Notifier> notifiers;
+    
+    public void sendAll(String message) {
+        for (Notifier notifier : notifiers) {
+            notifier.send(message);
+        }
+    }
+}
+```
+
+---
+
+## 📝 Key Takeaways
+
+1. **Open for extension, closed for modification**
+2. Use **interfaces** and **inheritance** to achieve OCP
+3. **Strategy pattern** is a classic way to implement OCP
+4. Don't modify existing tested code — extend it instead
+5. Ask: "Can I add this feature without changing existing classes?"
+
+---
+
+## ✅ Checklist
+
+- [x] Understand OCP definition
+- [x] Know how to use Strategy pattern
+- [x] Refactored discount calculator example
+- [x] Applied to payment processor example
+- [x] Identified OCP in my work projects
+
+---
+
+## 🔗 References
+
+- Clean Code by Robert C. Martin
+- Design Gurus: Grokking SOLID Design Principles
+- Refactoring Guru: Strategy Pattern
+
+---
+
+**Status:** ✅ Completed on 2026-07-01  
+**Time Spent:** 1.5 hours  
+**Next:** Day 3 — Liskov Substitution Principle (LSP)

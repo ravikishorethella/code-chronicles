@@ -26,6 +26,14 @@ export default function Footer() {
           >
             LinkedIn
           </a>
+          <a
+            href={siteConfig.author.leetcode}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-indigo-600 transition-colors"
+          >
+            LeetCode
+          </a>
           <Link href="/blog" className="hover:text-indigo-600 transition-colors">
             Blog
           </Link>

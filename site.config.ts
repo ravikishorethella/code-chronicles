@@ -12,12 +12,14 @@ const siteConfig = {
     email: "ravikthella@outlook.com", // TODO: Replace
     github: "https://github.com/ravikishorethella", // TODO: Replace
     linkedin: "https://linkedin.com/in/ravi-kishore-t-65b43b98", // TODO: Replace
+    leetcode: "https://leetcode.com/u/ravikishorethella/", // LeetCode profile
     twitter: "", // optional
   },
   navLinks: [
     { href: "/", label: "Home" },
     { href: "/blog", label: "Blog" },
     { href: "/projects", label: "Projects" },
+    { href: "/study-plans", label: "Study Plans" },
     { href: "/about", label: "About" },
   ],
   // All tags used across the blog — AI/tech focus

@@ -20,32 +20,12 @@ const projects: Project[] = [
     highlight: true,
   },
   {
-    title: "Spring Boot AI API",
-    description:
-      "Production-ready REST API powered by Spring AI. Exposes RAG capabilities built on Java/Spring Boot with OpenAI integration, streaming responses, and pgvector for document retrieval.",
-    tags: ["Spring AI", "Spring Boot", "Java", "RAG", "OpenAI"],
-    github: "https://github.com/yourusername/spring-boot-ai-api",
-    liveUrl: "https://spring-ai-api-demo.up.railway.app",
-    status: "planned",
-    highlight: true,
-  },
-  {
     title: "LangGraph AI Agent",
     description:
       "Multi-tool AI agent with memory and Human-in-the-Loop support. Built with LangGraph.js featuring web search, document reading, and ReAct reasoning pattern.",
     tags: ["LangGraph", "AI Agents", "LangChain", "JavaScript"],
     github: "https://github.com/yourusername/langgraph-agent",
     liveUrl: "https://langgraph-agent-demo.vercel.app",
-    status: "planned",
-    highlight: false,
-  },
-  {
-    title: "MCP Server — Interview Prep Tools",
-    description:
-      "A Model Context Protocol server that exposes interview prep content as tools for AI assistants like Claude Desktop and VS Code Copilot.",
-    tags: ["MCP", "AI Agents", "TypeScript"],
-    github: "https://github.com/yourusername/mcp-interview-prep",
-    liveUrl: "",
     status: "planned",
     highlight: false,
   },

@@ -1,0 +1,254 @@
+---
+title: "Day 1 — Single Responsibility Principle (SRP)"
+day: 1
+phase: "SOLID Design Principles"
+date: "2026-06-30"
+completed: false
+tags: ["SOLID", "Design Patterns", "OOP"]
+---
+
+# Day 1 — Single Responsibility Principle (SRP)
+
+## 📋 Topics Covered
+
+- What is SOLID and why interviewers care
+- **S** — Single Responsibility Principle (SRP)
+  - One class = one reason to change
+  - Bad vs good example
+- Identifying SRP violations
+- Refactoring techniques
+
+---
+
+## 📚 My Learning Notes
+
+### What is SRP?
+
+> A class should have one, and only one, reason to change.
+
+**In simple terms:** Each class should do ONE thing and do it well.
+
+### Why It Matters
+- Easier to understand and maintain
+- Easier to test
+- Changes in one area don't break other areas
+- Better code organization
+
+### Common Violations
+1. **God Classes** — Classes that do everything
+2. **Manager Classes** — Classes with too many responsibilities
+3. **Utility Classes** — Classes that mix unrelated functionality
+
+---
+
+## 💻 Practice Code
+
+### ❌ Bad Example (SRP Violation)
+
+```java
+// This Invoice class has TOO MANY responsibilities
+public class Invoice {
+    private String customer;
+    private double amount;
+    
+    // Responsibility 1: Calculate invoice
+    public double calculateTotal() {
+        return amount * 1.1; // including 10% tax
+    }
+    
+    // Responsibility 2: Save to database
+    public void saveToDB() {
+        // database logic here
+        System.out.println("Saving to DB...");
+    }
+    
+    // Responsibility 3: Print invoice
+    public void printInvoice() {
+        System.out.println("Printing invoice...");
+    }
+    
+    // Responsibility 4: Send email
+    public void sendEmail() {
+        System.out.println("Sending email...");
+    }
+}
+```
+
+**Problems:**
+- If DB schema changes, Invoice class must change
+- If email format changes, Invoice class must change  
+- If printing format changes, Invoice class must change
+- Hard to test each function independently
+
+---
+
+### ✅ Good Example (Following SRP)
+
+```java
+// 1. Invoice class — only handles invoice data and calculation
+public class Invoice {
+    private String customer;
+    private double amount;
+    
+    public double calculateTotal() {
+        return amount * 1.1;
+    }
+    
+    public String getCustomer() {
+        return customer;
+    }
+    
+    public double getAmount() {
+        return amount;
+    }
+}
+
+// 2. InvoiceRepository — handles database operations
+public class InvoiceRepository {
+    public void save(Invoice invoice) {
+        // database logic
+        System.out.println("Saving to DB: " + invoice.getCustomer());
+    }
+}
+
+// 3. InvoicePrinter — handles printing
+public class InvoicePrinter {
+    public void print(Invoice invoice) {
+        System.out.println("--- INVOICE ---");
+        System.out.println("Customer: " + invoice.getCustomer());
+        System.out.println("Total: $" + invoice.calculateTotal());
+    }
+}
+
+// 4. EmailService — handles email notifications
+public class EmailService {
+    public void sendInvoiceEmail(Invoice invoice) {
+        System.out.println("Sending email to: " + invoice.getCustomer());
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) {
+        Invoice invoice = new Invoice("John Doe", 100.0);
+        
+        InvoiceRepository repo = new InvoiceRepository();
+        repo.save(invoice);
+        
+        InvoicePrinter printer = new InvoicePrinter();
+        printer.print(invoice);
+        
+        EmailService emailService = new EmailService();
+        emailService.sendInvoiceEmail(invoice);
+    }
+}
+```
+
+**Benefits:**
+- Each class has ONE reason to change
+- Easy to test each class independently
+- Can replace implementation without affecting others
+- Clear separation of concerns
+
+---
+
+## 🎯 Practice Exercise
+
+### Exercise 1: Identify SRP Violations
+
+Look at this `User` class — what responsibilities does it have?
+
+```java
+public class User {
+    private String name;
+    private String email;
+    
+    public void registerUser() { /* ... */ }
+    public void sendWelcomeEmail() { /* ... */ }
+    public void logActivity() { /* ... */ }
+    public void validateEmail() { /* ... */ }
+    public void saveToDatabase() { /* ... */ }
+}
+```
+
+**My Answer:**
+- User registration logic
+- Email sending
+- Logging
+- Validation
+- Database operations
+
+**Refactored structure:**
+- `User` — data only
+- `UserRegistrationService` — handles registration
+- `EmailService` — sends emails
+- `Logger` — logs activities
+- `EmailValidator` — validates emails
+- `UserRepository` — database operations
+
+---
+
+### Exercise 2: Real-World Example from My Work
+
+**Before (Violation):**
+```java
+// My ProductService was doing too much
+public class ProductService {
+    public void createProduct() { }
+    public void sendInventoryAlert() { }
+    public void generateReport() { }
+    public void calculateDiscount() { }
+}
+```
+
+**After (SRP):**
+```java
+public class ProductService {
+    public void createProduct() { }
+}
+
+public class InventoryAlertService {
+    public void sendAlert() { }
+}
+
+public class ReportGenerator {
+    public void generate() { }
+}
+
+public class DiscountCalculator {
+    public double calculate() { }
+}
+```
+
+---
+
+## 📝 Key Takeaways
+
+1. **One class = one responsibility = one reason to change**
+2. If you use "and" when describing what a class does → it's doing too much
+3. Ask: "Why would this class need to change?" If multiple reasons → split it
+4. SRP makes code easier to test, maintain, and understand
+
+---
+
+## ✅ Checklist
+
+- [x] Understand what SRP means
+- [x] Identify SRP violations in code
+- [x] Know how to refactor to follow SRP
+- [x] Practiced with Invoice example
+- [x] Applied to real-world code from my projects
+
+---
+
+## 🔗 References
+
+- Clean Code by Robert C. Martin
+- Design Gurus: Grokking SOLID Design Principles
+- Refactoring Guru: SOLID Principles
+
+---
+
+**Status:** ✅ Completed on 2026-06-30  
+**Time Spent:** 1.5 hours  
+**Next:** Day 2 — Open/Closed Principle (OCP)

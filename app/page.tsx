@@ -44,6 +44,22 @@ export default function HomePage() {
           >
             GitHub
           </a>
+          <a
+            href={siteConfig.author.linkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-indigo-600 hover:text-indigo-600 dark:border-gray-600 dark:text-gray-300"
+          >
+            LinkedIn
+          </a>
+          <a
+            href={siteConfig.author.leetcode}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-indigo-600 hover:text-indigo-600 dark:border-gray-600 dark:text-gray-300"
+          >
+            LeetCode
+          </a>
         </div>
       </section>
 
