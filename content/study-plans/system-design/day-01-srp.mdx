@@ -3,7 +3,7 @@ title: "Day 1 — Single Responsibility Principle (SRP)"
 day: 1
 phase: "SOLID Design Principles"
 date: "2026-06-30"
-completed: false
+completed: true
 tags: ["SOLID", "Design Patterns", "OOP"]
 ---
 
@@ -15,8 +15,10 @@ tags: ["SOLID", "Design Patterns", "OOP"]
 - **S** — Single Responsibility Principle (SRP)
   - One class = one reason to change
   - Bad vs good example
+- How SRP relates to cohesion, coupling, and separation of concerns
 - Identifying SRP violations
 - Refactoring techniques
+- Practical checklist to achieve SRP in real code
 
 ---
 
@@ -34,10 +36,42 @@ tags: ["SOLID", "Design Patterns", "OOP"]
 - Changes in one area don't break other areas
 - Better code organization
 
+### SRP, Cohesion, Coupling, and Separation of Concerns
+
+These concepts are tightly connected and often discussed together in interviews.
+
+#### 1) SRP and Cohesion (aim for **high cohesion**)
+- **Cohesion** = how strongly related the responsibilities inside a class/module are.
+- A class following SRP usually has high cohesion because its methods and fields all support one clear purpose.
+- If a class has methods that feel unrelated, cohesion is low and SRP is likely violated.
+
+**Quick test:** Can you describe the class without using "and"?
+- Good: "This class calculates invoice totals."
+- Risky: "This class calculates totals **and** sends emails **and** writes to DB."
+
+#### 2) SRP and Coupling (aim for **low coupling**)
+- **Coupling** = how much one class depends on others.
+- SRP helps reduce unnecessary coupling by separating responsibilities into focused components.
+- When responsibilities are mixed, every change can ripple through multiple dependencies.
+
+**Example:**
+- If `Invoice` both calculates totals and sends emails, it now depends on pricing rules + email infrastructure.
+- Splitting those concerns keeps domain logic independent from infrastructure details.
+
+#### 3) SRP and Separation of Concerns (SoC)
+- **SoC** = divide software into distinct concerns (domain, persistence, UI, notifications, etc.).
+- SRP is a class-level/application-level way to enforce SoC.
+- You can think of SRP as: "SoC applied to objects/components."
+
+**Rule of thumb:**
+- SoC tells you *what to separate*.
+- SRP tells you *how small and focused each unit should be*.
+
 ### Common Violations
 1. **God Classes** — Classes that do everything
 2. **Manager Classes** — Classes with too many responsibilities
 3. **Utility Classes** — Classes that mix unrelated functionality
+4. **Multi-layer classes** — One class mixing domain logic + database + HTTP/email
 
 ---
 
@@ -152,6 +186,29 @@ public class Main {
 
 ---
 
+## 🛠️ How to Achieve SRP in Real Projects
+
+### Step-by-step approach
+1. **List reasons to change** for a class (business rule, schema change, API contract, formatting, etc.).
+2. If reasons come from different actors/teams (e.g., product vs DBA vs DevOps), split responsibilities.
+3. **Extract by concern**: domain logic, persistence, communication, presentation, validation.
+4. Keep the domain model focused on business behavior.
+5. Move side effects (DB, email, file I/O, external APIs) to dedicated services/adapters.
+6. Add tests per responsibility to lock behavior.
+
+### Practical heuristics
+- If a class name ends with vague words like `Manager`, `Helper`, `Processor`, double-check SRP.
+- If a class imports too many unrelated libraries (DB + mail + HTTP + formatting), it's a smell.
+- If one change request regularly modifies the same giant class, split it.
+- Prefer composition over bloated inheritance hierarchies.
+
+### Avoid over-splitting
+- SRP is not "one method per class".
+- Keep related behavior together when it changes for the same reason.
+- Goal: focused modules, not a class explosion.
+
+---
+
 ## 🎯 Practice Exercise
 
 ### Exercise 1: Identify SRP Violations
@@ -188,7 +245,7 @@ public class User {
 
 ---
 
-### Exercise 2: Real-World Example from My Work
+### Exercise 2: Real-World Example 
 
 **Before (Violation):**
 ```java
@@ -225,15 +282,18 @@ public class DiscountCalculator {
 ## 📝 Key Takeaways
 
 1. **One class = one responsibility = one reason to change**
-2. If you use "and" when describing what a class does → it's doing too much
-3. Ask: "Why would this class need to change?" If multiple reasons → split it
-4. SRP makes code easier to test, maintain, and understand
+2. SRP drives **high cohesion** and supports **low coupling**
+3. SRP is a practical form of **separation of concerns** at class/module level
+4. If you use "and" when describing what a class does, it may be doing too much
+5. Ask: "Why would this class need to change?" If multiple unrelated reasons → split it
+6. SRP makes code easier to test, maintain, and evolve safely
 
 ---
 
 ## ✅ Checklist
 
 - [x] Understand what SRP means
+- [x] Understand SRP relation to cohesion, coupling, and SoC
 - [x] Identify SRP violations in code
 - [x] Know how to refactor to follow SRP
 - [x] Practiced with Invoice example
