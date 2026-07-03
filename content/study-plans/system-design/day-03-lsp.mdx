@@ -1,0 +1,395 @@
+---
+title: "Day 3 — Liskov Substitution Principle (LSP)"
+day: 3
+phase: "SOLID Design Principles"
+date: "2026-07-02"
+completed: true
+tags: ["SOLID", "Design Patterns", "OOP", "Inheritance", "Composition"]
+---
+
+# Day 3 — Liskov Substitution Principle (LSP)
+
+## 📋 Topics Covered
+
+- **L** — Liskov Substitution Principle (LSP)
+- Subtypes must be replaceable for base types without breaking behavior
+- Preconditions, postconditions, and invariants (in simple terms)
+- Classic Square-Rectangle problem
+- How to fix LSP violations using interfaces
+- Composition vs inheritance: when to choose which
+
+---
+
+## 📚 My Learning Notes
+
+### What is LSP?
+
+> Objects of a superclass should be replaceable with objects of its subclasses without affecting correctness.
+
+**In simple terms:**
+If code works with a parent type, it should also work correctly with any child type.
+
+### Why It Matters
+- Prevents surprising runtime behavior
+- Makes polymorphism safe and predictable
+- Reduces fragile inheritance hierarchies
+- Improves maintainability and test confidence
+
+### LSP in Practical Interview Language
+- Child classes should not break expectations of the parent contract.
+- A subclass should not require more strict input rules than the base type.
+- A subclass should not return weaker results than what the base type promises.
+
+### Quick Contract Rules (Easy Version)
+1. **Do not strengthen preconditions** in child classes.
+   - If parent accepts all positive numbers, child should not accept only numbers > 100.
+2. **Do not weaken postconditions** in child classes.
+   - If parent guarantees a non-null result, child should not return null.
+3. **Preserve invariants** of the base type.
+   - If parent keeps width and height independent, child should not silently tie them together.
+
+---
+
+## 💻 Practice Code
+
+### ❌ Bad Example (Square-Rectangle LSP Violation)
+
+```java
+public class Rectangle {
+	protected int width;
+	protected int height;
+
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	public int getArea() {
+		return width * height;
+	}
+}
+
+// Looks mathematically valid, but behavior breaks substitution
+public class Square extends Rectangle {
+	@Override
+	public void setWidth(int width) {
+		this.width = width;
+		this.height = width;
+	}
+
+	@Override
+	public void setHeight(int height) {
+		this.height = height;
+		this.width = height;
+	}
+}
+
+public class Client {
+	public static void resizeRectangle(Rectangle rectangle) {
+		rectangle.setWidth(5);
+		rectangle.setHeight(4);
+
+		// Client expects independent width and height
+		int expected = 20;
+		int actual = rectangle.getArea();
+
+		System.out.println("Expected area: " + expected);
+		System.out.println("Actual area: " + actual);
+	}
+
+	public static void main(String[] args) {
+		resizeRectangle(new Rectangle()); // works: 20
+		resizeRectangle(new Square());    // breaks expectation: 16
+	}
+}
+```
+
+**Why this violates LSP:**
+- `Client` assumes width and height are independently settable for `Rectangle`.
+- `Square` changes that contract by coupling width and height.
+- So `Square` cannot safely substitute `Rectangle` in this design.
+
+---
+
+### ✅ Fix #1 (Use Interfaces for Stable Contracts)
+
+Instead of forcing `Square` to inherit mutable `Rectangle` behavior, define contracts by capability.
+
+```java
+// Capability 1: any shape can compute area
+public interface Shape {
+	int area();
+}
+
+// Capability 2: only some shapes are resizable by width/height
+public interface ResizableRectangle {
+	void setWidth(int width);
+	void setHeight(int height);
+}
+
+public class Rectangle implements Shape, ResizableRectangle {
+	private int width;
+	private int height;
+
+	public Rectangle(int width, int height) {
+		this.width = width;
+		this.height = height;
+	}
+
+	@Override
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	@Override
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	@Override
+	public int area() {
+		return width * height;
+	}
+}
+
+public class Square implements Shape {
+	private int side;
+
+	public Square(int side) {
+		this.side = side;
+	}
+
+	public void setSide(int side) {
+		this.side = side;
+	}
+
+	@Override
+	public int area() {
+		return side * side;
+	}
+}
+
+public class Client {
+	public static void printArea(Shape shape) {
+		System.out.println("Area: " + shape.area());
+	}
+
+	public static void stretch(ResizableRectangle rectangle) {
+		rectangle.setWidth(5);
+		rectangle.setHeight(4);
+	}
+}
+```
+
+**Why this works:**
+- `Shape` contract is small and safe for both `Rectangle` and `Square`.
+- Only `Rectangle` implements width/height mutation capability.
+- No fake inheritance, so substitution remains valid.
+
+---
+
+### ✅ Fix #2 (Use Composition When Behavior Differs)
+
+If shared behavior is partial, compose instead of inheriting.
+
+```java
+public interface Shape {
+	int area();
+}
+
+public final class Dimensions {
+	private int width;
+	private int height;
+
+	public Dimensions(int width, int height) {
+		this.width = width;
+		this.height = height;
+	}
+
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	public int width() {
+		return width;
+	}
+
+	public int height() {
+		return height;
+	}
+}
+
+public class Rectangle implements Shape {
+	private final Dimensions dimensions;
+
+	public Rectangle(int width, int height) {
+		this.dimensions = new Dimensions(width, height);
+	}
+
+	public void setWidth(int width) {
+		dimensions.setWidth(width);
+	}
+
+	public void setHeight(int height) {
+		dimensions.setHeight(height);
+	}
+
+	@Override
+	public int area() {
+		return dimensions.width() * dimensions.height();
+	}
+}
+
+public class Square implements Shape {
+	private int side;
+
+	public Square(int side) {
+		this.side = side;
+	}
+
+	public void setSide(int side) {
+		this.side = side;
+	}
+
+	@Override
+	public int area() {
+		return side * side;
+	}
+}
+```
+
+**Takeaway:**
+- Composition lets each type model its own rules without pretending to be another type.
+
+---
+
+## 🧭 Composition vs Inheritance (When to Use Which)
+
+### Prefer Inheritance when:
+- Relationship is truly **is-a** and behavior contract is fully compatible
+- Child does not need to weaken/alter base assumptions
+- Substitution tests pass naturally
+
+### Prefer Composition when:
+- Relationship is more **has-a** than is-a
+- Child behavior differs in key invariants/rules
+- You want flexible assembly of behaviors
+- Inheritance would create special-case overrides
+
+### Simple decision rule
+- If your subclass needs to override base behavior in surprising ways, stop and choose composition or a smaller interface.
+
+---
+
+## 🎯 Practice Exercise
+
+### Exercise 1: Spot LSP Violation
+
+```java
+public class Bird {
+	public void fly() {
+		System.out.println("Flying");
+	}
+}
+
+public class Penguin extends Bird {
+	@Override
+	public void fly() {
+		throw new UnsupportedOperationException("Penguins cannot fly");
+	}
+}
+```
+
+**What is wrong?**
+- `Penguin` cannot substitute `Bird` safely because it breaks the `fly()` contract.
+
+**Better design:**
+- `Bird` as common type with shared behavior
+- Separate `FlyingBird` capability interface
+- Only flying birds implement `fly()`
+
+---
+
+### Exercise 2: Real-World Example
+
+**Before (Violation):**
+```java
+public class FileStorage {
+	public void save(String fileName, byte[] data) {
+		// saves to local filesystem
+	}
+}
+
+public class ReadOnlyCloudStorage extends FileStorage {
+	@Override
+	public void save(String fileName, byte[] data) {
+		throw new UnsupportedOperationException("Read-only bucket");
+	}
+}
+```
+
+**After (LSP-Friendly):**
+```java
+public interface ReadableStorage {
+	byte[] read(String fileName);
+}
+
+public interface WritableStorage extends ReadableStorage {
+	void save(String fileName, byte[] data);
+}
+
+public class LocalStorage implements WritableStorage {
+	public byte[] read(String fileName) { return new byte[0]; }
+	public void save(String fileName, byte[] data) { }
+}
+
+public class ReadOnlyCloudStorage implements ReadableStorage {
+	public byte[] read(String fileName) { return new byte[0]; }
+}
+```
+
+Now clients depending on write capability use `WritableStorage`, so no broken substitution.
+
+---
+
+## 📝 Key Takeaways
+
+1. **Subtypes must preserve base behavior contracts**
+2. If a child throws `UnsupportedOperationException` for base methods, recheck design
+3. Square-Rectangle issue is usually a design-contract problem, not just a math problem
+4. Use **small interfaces** to model capabilities safely
+5. Prefer **composition over inheritance** when invariants differ
+
+---
+
+## ✅ Checklist
+
+- [x] Understand LSP definition and intent
+- [x] Can identify LSP violations in inheritance hierarchies
+- [x] Understand Square-Rectangle substitution problem
+- [x] Know how to fix using interfaces/capability-based design
+- [x] Know when to choose composition vs inheritance
+
+---
+
+## 🔗 References
+
+- Barbara Liskov, "Data Abstraction and Hierarchy" (1987)
+- Clean Code by Robert C. Martin
+- Clean Architecture by Robert C. Martin
+- Design Gurus: Grokking SOLID Design Principles
+- Refactoring Guru: Liskov Substitution Principle
+
+---
+
+**Status:** ✅ Completed on 2026-07-02  
+**Time Spent:** 1.5 hours  
+**Next:** Day 4 — Interface Segregation Principle (ISP)
+
