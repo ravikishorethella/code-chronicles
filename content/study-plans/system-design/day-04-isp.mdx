@@ -1,0 +1,302 @@
+---
+title: "Day 4 — Interface Segregation Principle (ISP)"
+day: 4
+phase: "SOLID Design Principles"
+date: "2026-07-03"
+completed: true
+tags: ["SOLID", "Design Patterns", "OOP", "Interfaces", "Architecture"]
+---
+
+# Day 4 — Interface Segregation Principle (ISP)
+
+## 📋 Topics Covered
+
+- **I** — Interface Segregation Principle (ISP)
+- ISP definition and interview explanation
+- Fat interface anti-pattern
+- Multiple interface implementation
+- Signs of a fat interface
+- How to split interfaces correctly
+
+---
+
+## 📚 My Learning Notes
+
+### What is ISP?
+
+> Clients should not be forced to depend on methods they do not use.
+
+**In simple terms:**
+- Prefer many small, focused interfaces over one large interface.
+- A class should implement only what it actually needs.
+
+### Why It Matters
+- Reduces unnecessary coupling between modules
+- Prevents empty/dummy method implementations
+- Improves readability, testability, and maintainability
+- Makes change impact smaller and safer
+
+### ISP in Practical Interview Language
+- If implementing a method feels unnatural or throws `UnsupportedOperationException`, interface design is likely wrong.
+- Interfaces should represent capabilities, not everything a family of classes might ever do.
+
+---
+
+## 🚫 Fat Interface Anti-Pattern
+
+A **fat interface** is a large interface with unrelated methods, forcing clients to depend on behavior they don't need.
+
+### Example of Fat Interface (Violation)
+
+```java
+public interface Worker {
+	void code();
+	void test();
+	void deploy();
+	void attendClientMeeting();
+	void prepareBudgetReport();
+}
+
+public class Developer implements Worker {
+	public void code() { System.out.println("Coding"); }
+	public void test() { System.out.println("Testing"); }
+	public void deploy() { System.out.println("Deploying"); }
+
+	// Unnatural responsibilities for Developer
+	public void attendClientMeeting() {
+		throw new UnsupportedOperationException("Not required");
+	}
+
+	public void prepareBudgetReport() {
+		throw new UnsupportedOperationException("Not required");
+	}
+}
+```
+
+### Problems
+- Forces classes to implement irrelevant methods
+- Causes runtime surprises (`UnsupportedOperationException`)
+- Increases ripple effect when interface changes
+- Makes unit tests noisy and less meaningful
+
+---
+
+## ✅ Multiple Interface Implementation (ISP-Friendly)
+
+Split the fat interface by capability and let classes implement only relevant contracts.
+
+```java
+public interface Coder {
+	void code();
+}
+
+public interface Tester {
+	void test();
+}
+
+public interface Deployer {
+	void deploy();
+}
+
+public interface ClientCommunicator {
+	void attendClientMeeting();
+}
+
+public interface BudgetPlanner {
+	void prepareBudgetReport();
+}
+
+public class Developer implements Coder, Tester, Deployer {
+	public void code() { System.out.println("Coding"); }
+	public void test() { System.out.println("Testing"); }
+	public void deploy() { System.out.println("Deploying"); }
+}
+
+public class EngineeringManager implements ClientCommunicator, BudgetPlanner {
+	public void attendClientMeeting() { System.out.println("Meeting with client"); }
+	public void prepareBudgetReport() { System.out.println("Preparing budget"); }
+}
+```
+
+### Why this design is better
+- `Developer` is not forced into manager responsibilities
+- Contracts are explicit and role-based
+- Adding a new capability doesn't break unrelated clients
+
+---
+
+## 🔎 Signs of a Fat Interface
+
+1. Implementations have empty methods or throw `UnsupportedOperationException`
+2. Interface method names feel unrelated to one another
+3. A single change in interface breaks many unrelated classes
+4. Mock setup in tests becomes huge because too many methods exist
+5. Implementing classes use only a small subset of interface methods
+6. Interface docs include many "not applicable for X class" notes
+
+---
+
+## 🛠️ How to Split Interfaces Correctly
+
+### Step-by-step approach
+1. List all methods and group them by use-case/capability.
+2. Identify which clients consume which method groups.
+3. Create small focused interfaces per capability.
+4. Move classes to implement only needed interfaces.
+5. Keep a temporary adapter/facade if migration must be gradual.
+6. Update callers to depend on smaller interfaces.
+
+### Practical splitting rules
+- Split by **client needs**, not by arbitrary method count.
+- Name by capability (`Readable`, `Writable`, `Searchable`) rather than generic `Manager` names.
+- Keep interfaces cohesive; if methods change for different reasons, separate them.
+- Prefer composition of small interfaces over monolithic contracts.
+
+---
+
+## 💻 Real-World Example: Printer System
+
+### ❌ Before (Fat Interface)
+
+```java
+public interface MultiFunctionPrinter {
+	void print(Document doc);
+	void scan(Document doc);
+	void fax(Document doc);
+}
+
+public class BasicPrinter implements MultiFunctionPrinter {
+	public void print(Document doc) { System.out.println("Printing"); }
+	public void scan(Document doc) {
+		throw new UnsupportedOperationException("Scan not supported");
+	}
+	public void fax(Document doc) {
+		throw new UnsupportedOperationException("Fax not supported");
+	}
+}
+```
+
+### ✅ After (Segregated Interfaces)
+
+```java
+public interface Printer {
+	void print(Document doc);
+}
+
+public interface Scanner {
+	void scan(Document doc);
+}
+
+public interface Fax {
+	void fax(Document doc);
+}
+
+public class BasicPrinter implements Printer {
+	public void print(Document doc) { System.out.println("Printing"); }
+}
+
+public class OfficePrinter implements Printer, Scanner, Fax {
+	public void print(Document doc) { System.out.println("Printing"); }
+	public void scan(Document doc) { System.out.println("Scanning"); }
+	public void fax(Document doc) { System.out.println("Faxing"); }
+}
+```
+
+---
+
+## 🎯 Practice Exercise
+
+### Exercise 1: Identify ISP Violation
+
+```java
+public interface PaymentGateway {
+	void payByCard(double amount);
+	void payByUPI(double amount);
+	void payByCrypto(double amount);
+}
+
+public class CardOnlyGateway implements PaymentGateway {
+	public void payByCard(double amount) { }
+	public void payByUPI(double amount) { throw new UnsupportedOperationException(); }
+	public void payByCrypto(double amount) { throw new UnsupportedOperationException(); }
+}
+```
+
+**My Answer:**
+- This is a fat interface.
+- `CardOnlyGateway` is forced to implement methods it doesn't support.
+
+**Better split:**
+- `CardPayment`, `UPIPayment`, `CryptoPayment` as separate capability interfaces.
+
+---
+
+### Exercise 2: Service Layer Refactor
+
+**Before:**
+```java
+public interface UserOperations {
+	void login();
+	void logout();
+	void createUser();
+	void deleteUser();
+	void generateAuditReport();
+}
+```
+
+**After (My Refactoring):**
+```java
+public interface AuthOperations {
+	void login();
+	void logout();
+}
+
+public interface UserAdminOperations {
+	void createUser();
+	void deleteUser();
+}
+
+public interface AuditOperations {
+	void generateAuditReport();
+}
+```
+
+Now each client depends only on what it truly needs.
+
+---
+
+## 📝 Key Takeaways
+
+1. **No client should depend on methods it does not use**
+2. Fat interfaces create tight coupling and brittle code
+3. Small, cohesive interfaces improve flexibility and testability
+4. `UnsupportedOperationException` inside implementations is often an ISP smell
+5. Split interfaces by capability and client usage patterns
+
+---
+
+## ✅ Checklist
+
+- [x] Understand ISP definition and intent
+- [x] Can identify fat interface anti-pattern
+- [x] Know signs of interface bloat
+- [x] Can split a fat interface into smaller capability interfaces
+- [x] Understand multiple interface implementation in practice
+
+---
+
+## 🔗 References
+
+- Clean Code by Robert C. Martin
+- Clean Architecture by Robert C. Martin
+- Agile Software Development, Principles, Patterns, and Practices by Robert C. Martin
+- Design Gurus: Grokking SOLID Design Principles
+- Refactoring Guru: Interface Segregation Principle
+- Martin Fowler: Role Interface pattern notes
+
+---
+
+**Status:** ✅ Completed on 2026-07-03  
+**Time Spent:** 1.5 hours  
+**Next:** Day 5 — Dependency Inversion Principle (DIP)
+
