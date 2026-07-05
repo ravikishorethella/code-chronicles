@@ -1,0 +1,375 @@
+---
+title: "Day 5 — Dependency Inversion Principle (DIP)"
+day: 5
+phase: "SOLID Design Principles"
+date: "2026-07-04"
+completed: true
+tags: ["SOLID", "Design Patterns", "OOP", "Dependency Injection", "Architecture"]
+---
+
+# Day 5 — Dependency Inversion Principle (DIP)
+
+## 📋 Topics Covered
+
+- **D** — Dependency Inversion Principle (DIP)
+- DIP definition and interview explanation
+- High-level vs low-level modules
+- Dependency Injection (DI) as a way to achieve DIP
+- Bad vs good examples
+- How all 5 SOLID principles interlink
+- Full SOLID review and quick-reference cheat sheet
+
+---
+
+## 📚 My Learning Notes
+
+### What is DIP?
+
+> 1. High-level modules should not depend on low-level modules. Both should depend on abstractions.
+> 2. Abstractions should not depend on details. Details (concrete implementations) should depend on abstractions.
+
+**In simple terms:**
+- Don't hardcode dependencies — depend on interfaces, not concrete classes.
+- High-level business logic should not care *how* low-level details (DB, email, HTTP) are implemented.
+
+### Why It Matters
+- Makes business logic independent of infrastructure details
+- Easy to swap implementations (e.g., switch MySQL → PostgreSQL) without touching core code
+- Enables proper unit testing with mocks/stubs
+- Reduces tight coupling between layers
+
+### DIP vs Dependency Injection (DI)
+| | |
+|---|---|
+| **DIP** | A design principle — *what* to achieve |
+| **DI** | A technique / pattern — *how* to achieve DIP |
+
+DI is the most common way to apply DIP: inject dependencies through constructors, setters, or method parameters rather than instantiating them directly.
+
+---
+
+## 💻 Practice Code
+
+### ❌ Bad Example (Violates DIP)
+
+```java
+// Low-level module
+public class MySQLDatabase {
+    public void save(String data) {
+        System.out.println("Saving to MySQL: " + data);
+    }
+}
+
+// High-level module directly depends on concrete low-level class
+public class OrderService {
+    private MySQLDatabase database = new MySQLDatabase(); // tight coupling!
+
+    public void placeOrder(String order) {
+        // Business logic
+        System.out.println("Processing order: " + order);
+        database.save(order); // depends on MySQL specifically
+    }
+}
+```
+
+**Problems:**
+- `OrderService` is directly coupled to `MySQLDatabase`
+- Switching to PostgreSQL or MongoDB means changing `OrderService`
+- Cannot unit test `OrderService` without a real MySQL connection
+- Violates DIP — high-level module depends on low-level detail
+
+---
+
+### ✅ Good Example (Following DIP with Dependency Injection)
+
+```java
+// 1. Define the abstraction (interface)
+public interface Database {
+    void save(String data);
+}
+
+// 2. Low-level modules implement the abstraction
+public class MySQLDatabase implements Database {
+    @Override
+    public void save(String data) {
+        System.out.println("Saving to MySQL: " + data);
+    }
+}
+
+public class PostgreSQLDatabase implements Database {
+    @Override
+    public void save(String data) {
+        System.out.println("Saving to PostgreSQL: " + data);
+    }
+}
+
+public class InMemoryDatabase implements Database {
+    @Override
+    public void save(String data) {
+        System.out.println("Saving in-memory: " + data);
+    }
+}
+
+// 3. High-level module depends on abstraction (injected via constructor)
+public class OrderService {
+    private final Database database;
+
+    // Dependency injected — not hardcoded
+    public OrderService(Database database) {
+        this.database = database;
+    }
+
+    public void placeOrder(String order) {
+        System.out.println("Processing order: " + order);
+        database.save(order);
+    }
+}
+
+// 4. Composition root — wire dependencies
+public class Main {
+    public static void main(String[] args) {
+        // Production: use MySQL
+        OrderService productionService = new OrderService(new MySQLDatabase());
+        productionService.placeOrder("Order #001");
+
+        // Swap to PostgreSQL with zero changes to OrderService
+        OrderService altService = new OrderService(new PostgreSQLDatabase());
+        altService.placeOrder("Order #002");
+
+        // Testing: use in-memory DB — no real DB needed
+        OrderService testService = new OrderService(new InMemoryDatabase());
+        testService.placeOrder("Test Order");
+    }
+}
+```
+
+**Benefits:**
+- `OrderService` is completely independent of any specific DB technology
+- Swap implementations at the composition root — no business logic changes
+- Unit tests use `InMemoryDatabase` or a mock — fast and isolated
+
+---
+
+### ✅ Real-World Example: Notification Service
+
+```java
+// Abstraction
+public interface NotificationSender {
+    void send(String recipient, String message);
+}
+
+// Low-level implementations
+public class EmailSender implements NotificationSender {
+    @Override
+    public void send(String recipient, String message) {
+        System.out.println("Email to " + recipient + ": " + message);
+    }
+}
+
+public class SmsSender implements NotificationSender {
+    @Override
+    public void send(String recipient, String message) {
+        System.out.println("SMS to " + recipient + ": " + message);
+    }
+}
+
+// High-level module
+public class UserRegistrationService {
+    private final NotificationSender notificationSender;
+
+    public UserRegistrationService(NotificationSender notificationSender) {
+        this.notificationSender = notificationSender;
+    }
+
+    public void register(String email) {
+        System.out.println("Registering user: " + email);
+        notificationSender.send(email, "Welcome! Your registration was successful.");
+    }
+}
+
+// Wire-up
+public class Main {
+    public static void main(String[] args) {
+        // Use email in production
+        UserRegistrationService service = new UserRegistrationService(new EmailSender());
+        service.register("user@example.com");
+
+        // Easily switch to SMS
+        UserRegistrationService smsService = new UserRegistrationService(new SmsSender());
+        smsService.register("user@example.com");
+    }
+}
+```
+
+---
+
+## 🎯 Practice Exercise
+
+### Exercise 1: Spot the DIP Violation
+
+```java
+public class ReportGenerator {
+    private PDFExporter exporter = new PDFExporter(); // hardcoded!
+
+    public void generate(String data) {
+        exporter.export(data);
+    }
+}
+```
+
+**What is wrong?**
+- `ReportGenerator` is tightly coupled to `PDFExporter`
+- Cannot export as CSV or Excel without modifying `ReportGenerator`
+
+**Better design:**
+- Define `ReportExporter` interface with `export(String data)`
+- Inject implementation via constructor: `new ReportGenerator(new PDFExporter())`
+
+---
+
+### Exercise 2: Layered Architecture Refactor
+
+**Before (violation — controller reaches into concrete service):**
+```java
+public class OrderController {
+    private OrderServiceImpl service = new OrderServiceImpl(); // tight coupling
+
+    public void handleOrder(String order) {
+        service.process(order);
+    }
+}
+```
+
+**After (My Refactoring):**
+```java
+public interface OrderService {
+    void process(String order);
+}
+
+public class OrderServiceImpl implements OrderService {
+    public void process(String order) { }
+}
+
+public class OrderController {
+    private final OrderService service;
+
+    public OrderController(OrderService service) {
+        this.service = service;
+    }
+
+    public void handleOrder(String order) {
+        service.process(order);
+    }
+}
+```
+
+---
+
+## 🔗 How All 5 SOLID Principles Interlink
+
+The SOLID principles are not independent rules — they reinforce each other. Violating one often leads to violating others.
+
+```
+SRP → separates concerns into distinct classes
+OCP → uses those separated classes as extension points
+LSP → ensures extended classes are safely substitutable
+ISP → keeps the extension contracts small and focused
+DIP → wires everything together through those small abstractions
+```
+
+### SRP → OCP
+- SRP forces you to break out responsibilities into separate classes.
+- OCP then makes each class extensible without modification.
+- Together: each concern has a focused, stable, extendable unit.
+
+### OCP → LSP
+- OCP tells you to extend via inheritance or composition.
+- LSP ensures those extensions don't break the original contract.
+- Together: extension is safe and predictable.
+
+### LSP → ISP
+- LSP requires subtypes to honor base contracts fully.
+- ISP keeps those contracts small enough that honoring them is realistic.
+- Together: classes don't end up implementing irrelevant methods just to satisfy a fat base.
+
+### ISP → DIP
+- ISP splits interfaces into focused capabilities.
+- DIP uses those focused interfaces as the abstractions high-level modules depend on.
+- Together: high-level policy depends on minimal, purposeful contracts — not bloated ones.
+
+### DIP completes the loop back to SRP
+- DIP enforces separation between business logic and infrastructure.
+- That separation is exactly what SRP requires at a module/layer level.
+- Together: every layer, class, and module has one clear purpose.
+
+---
+
+## 📖 Full SOLID Principles Review
+
+| Principle | Core Rule | Key Word | Common Smell |
+|---|---|---|---|
+| **SRP** | One reason to change | Responsibility | God class, mixed concerns |
+| **OCP** | Open to extend, closed to modify | Extension | Long if-else chains on type |
+| **LSP** | Subtypes replace base types safely | Substitution | `UnsupportedOperationException` in child |
+| **ISP** | Don't force unused method dependencies | Interface size | Fat interface, empty method body |
+| **DIP** | Depend on abstractions, not concretions | Abstraction | `new ConcreteClass()` inside business logic |
+
+### One-Line Cheat Sheet
+- **S** — One class, one job
+- **O** — Add features by adding code, not editing it
+- **L** — Children must keep parent promises
+- **I** — Only implement what you actually use
+- **D** — Depend on contracts, not implementations
+
+### How They Fit Into Architecture
+
+```
+High-Level Policy (Business Rules)
+         ↕  (abstraction boundary — DIP)
+Low-Level Details (DB, Email, HTTP, File I/O)
+
+Each layer:
+  - Has one reason to change           (SRP)
+  - Is open to new variants            (OCP)
+  - Can substitute implementations     (LSP)
+  - Depends on minimal contracts       (ISP)
+  - Never hardcodes dependencies       (DIP)
+```
+
+---
+
+## 📝 Key Takeaways
+
+1. **High-level modules depend on abstractions, not concrete implementations**
+2. Dependency Injection is the practical technique to apply DIP
+3. SOLID principles work as a system — each one reinforces the others
+4. The whole point of SOLID is to make code easier to change safely over time
+5. Ask: "If I change this detail, how many things break?" — SOLID minimizes the answer
+
+---
+
+## ✅ Checklist
+
+- [x] Understand DIP definition and intent
+- [x] Know the difference between DIP (principle) and DI (technique)
+- [x] Can identify tight coupling violations
+- [x] Can refactor using constructor-based dependency injection
+- [x] Understand how all 5 SOLID principles interlink
+- [x] Can explain SOLID as a unified system in an interview
+
+---
+
+## 🔗 References
+
+- Clean Code by Robert C. Martin
+- Clean Architecture by Robert C. Martin
+- Agile Software Development, Principles, Patterns, and Practices by Robert C. Martin
+- Design Gurus: Grokking SOLID Design Principles
+- Refactoring Guru: Dependency Inversion Principle
+- Martin Fowler: Inversion of Control Containers and the Dependency Injection Pattern
+
+---
+
+**Status:** ✅ Completed on 2026-07-04  
+**Time Spent:** 2 hours  
+**Next:** Day 6 — Design Patterns Introduction
