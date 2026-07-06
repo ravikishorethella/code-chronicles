@@ -1,0 +1,546 @@
+---
+title: "Day 6 — OOD Framework, UML Basics & Diagrams"
+day: 6
+phase: "Object-Oriented Design"
+date: "2026-07-05"
+completed: true
+tags: ["OOD", "UML", "Design", "System Design", "Interview"]
+---
+
+# Day 6 — OOD Framework, UML Basics & Diagrams
+
+## 📋 Topics Covered
+
+- 7-step OOD framework for interview problems
+- UML basics — what it is and why it matters
+- UML diagram types overview
+- **Use Case Diagram** — actors, use cases, relationships
+- **Class Diagram** — classes, attributes, methods, relationships
+- **Activity Diagram** — flows, decisions, forks
+- **Sequence Diagram** — object interactions over time
+- UML relationships and cardinality
+- UML cheat sheet
+- Common mistakes in OOD interviews
+
+---
+
+## 📚 My Learning Notes
+
+### What is OOD?
+
+Object-Oriented Design (OOD) is the process of planning a system of interacting objects to solve a software problem.
+
+> In an interview: OOD = define classes, their attributes, methods, and how they interact.
+
+### Why It Matters in Interviews
+- Tests ability to model real-world systems (Parking Lot, Library, ATM, etc.)
+- Shows understanding of abstraction, encapsulation, inheritance, and polymorphism
+- Demonstrates knowledge of SOLID principles in practice
+- Evaluates how well you communicate design visually (via UML)
+
+---
+
+## 🗺️ 7-Step OOD Framework
+
+Use this framework for every OOD interview question. It structures your thinking and shows the interviewer you are systematic.
+
+### Step 1 — Clarify Requirements
+- Ask clarifying questions before designing anything.
+- Understand scope: what features are in/out?
+- Examples: "Is this for a single branch or multi-location?" "Do we need payment?" "How many concurrent users?"
+
+### Step 2 — Identify Actors
+- Who (or what system) interacts with the system?
+- Examples: Customer, Admin, Cashier, ExternalPaymentGateway
+
+### Step 3 — Define Use Cases
+- What can each actor do?
+- Use cases = actions/goals the system must support.
+- Examples: "Customer searches for book", "Admin adds inventory", "System processes payment"
+
+### Step 4 — Identify Core Objects (Nouns)
+- Scan the requirements — every important noun is a potential class.
+- Examples from a Library system: `Book`, `Member`, `Librarian`, `Loan`, `Catalog`, `Reservation`
+
+### Step 5 — Define Relationships Between Objects
+- Association, Aggregation, Composition, Inheritance, Dependency
+- Ask: Does A own B? Does A use B? Is A a type of B?
+
+### Step 6 — Identify Attributes and Methods
+- For each class: what data does it hold? What operations does it perform?
+- Keep methods behavior-focused (verbs): `checkout()`, `reserve()`, `calculateFine()`
+
+### Step 7 — Apply Design Principles and Patterns
+- Check SRP, OCP, LSP, ISP, DIP against your design.
+- Ask if a known pattern fits: Strategy, Observer, Factory, Singleton, etc.
+- Refactor early if a class has too many responsibilities.
+
+---
+
+## 📐 UML Basics
+
+### What is UML?
+**UML (Unified Modeling Language)** is a standardized visual language for describing software systems.
+
+- Not a programming language — it is a *communication tool*.
+- Diagrams are used to think, discuss, and document designs.
+- In interviews: you don't need pixel-perfect UML, but correct notation matters.
+
+### Two Categories of UML Diagrams
+
+| Category | Purpose | Common Diagrams |
+|---|---|---|
+| **Structural** | Show what the system *is* | Class, Component, Object |
+| **Behavioral** | Show how the system *works* | Use Case, Activity, Sequence, State |
+
+---
+
+## 🎭 Use Case Diagram
+
+### What It Shows
+- **Who** interacts with the system (actors)
+- **What** the system does (use cases)
+- **How** actors relate to use cases
+
+### Key Elements
+
+| Symbol | Meaning |
+|---|---|
+| Stick figure | Actor (person or external system) |
+| Oval | Use case (a system function/goal) |
+| Rectangle | System boundary |
+| Solid arrow from actor to use case | Actor initiates the use case |
+| `<<include>>` | One use case always calls another |
+| `<<extend>>` | One use case optionally extends another |
+
+### When to Use
+- Requirements gathering phase
+- Communicate what the system does to stakeholders (non-technical)
+- Drive identification of actors and system scope
+
+### Example: Library System Use Case Diagram
+
+```
++-----------------------------------------------+
+|               Library System                  |
+|                                               |
+|  [Search Catalog]   [Borrow Book]             |
+|  [Return Book]      [Reserve Book]            |
+|  [Pay Fine]                                   |
+|                                               |
+|  [Manage Inventory]  [Generate Reports]       |
++-----------------------------------------------+
+
+Member ——→ Search Catalog
+Member ——→ Borrow Book
+Member ——→ Return Book
+Member ——→ Reserve Book
+Member ——→ Pay Fine
+
+Borrow Book ——<<include>>——→ Check Availability
+Pay Fine ——<<extend>>——→ Send Receipt
+
+Librarian ——→ Manage Inventory
+Librarian ——→ Generate Reports
+```
+
+### include vs extend — Quick Rule
+- `<<include>>`: base use case **always** calls the included one (mandatory sub-flow).
+- `<<extend>>`: extension use case **optionally** adds to the base (conditional flow).
+
+---
+
+## 🏛️ Class Diagram
+
+### What It Shows
+- Classes (entities in the system)
+- Attributes (fields/data each class holds)
+- Methods (behaviour each class exposes)
+- Relationships between classes
+
+### Class Notation
+
+```
++----------------------------+
+|         ClassName          |  ← Class name
++----------------------------+
+| - privateField: Type       |  ← Attributes
+| # protectedField: Type     |
+| + publicField: Type        |
++----------------------------+
+| + publicMethod(): Type     |  ← Methods
+| - privateMethod(): void    |
++----------------------------+
+```
+
+**Visibility symbols:**
+- `+` Public
+- `-` Private
+- `#` Protected
+- `~` Package
+
+### Relationships in Class Diagrams
+
+| Relationship | Symbol | Meaning | Example |
+|---|---|---|---|
+| **Association** | ——→ | A uses/knows B | `Order` knows `Customer` |
+| **Aggregation** | ——◇ | A has B (B can exist without A) | `Team` has `Players` |
+| **Composition** | ——◆ | A owns B (B cannot exist without A) | `House` owns `Rooms` |
+| **Inheritance** | ——▷ | A is a B | `Dog` extends `Animal` |
+| **Realization** | - - ▷ | A implements interface B | `MySQLDB` implements `Database` |
+| **Dependency** | - - → | A depends on B temporarily | `OrderService` depends on `EmailSender` |
+
+### Cardinality (Multiplicity)
+
+Placed on association/aggregation/composition lines to show how many objects participate.
+
+| Notation | Meaning |
+|---|---|
+| `1` | Exactly one |
+| `0..1` | Zero or one (optional) |
+| `*` or `0..*` | Zero or many |
+| `1..*` | One or many (at least one) |
+| `m..n` | Between m and n |
+
+**Reading cardinality:**
+```
+Customer 1 ————————— 0..* Order
+```
+→ One Customer can have zero or many Orders.
+→ Each Order belongs to exactly one Customer.
+
+### Example: Library Class Diagram
+
+```
++------------------+          +------------------+
+|     Member       |          |      Book        |
++------------------+          +------------------+
+| - memberId: int  |          | - isbn: String   |
+| - name: String   |          | - title: String  |
+| - email: String  |          | - author: String |
++------------------+          +------------------+
+| + search()       |          | + getDetails()   |
+| + borrow()       |          +------------------+
+| + returnBook()   |
++------------------+
+        |  1                            |
+        |                               | *
+        +———————————+          +------------------+
+                    |          |      Loan        |
+                    |          +------------------+
+                    |          | - loanId: int    |
+                    +——————————| - dueDate: Date  |
+                    1      *   | - returned: bool |
+                               +------------------+
+                               | + calculateFine()|
+                               +------------------+
+```
+
+---
+
+## 🔄 Activity Diagram
+
+### What It Shows
+- Flow of control through a process or algorithm
+- Decision points, parallel flows, and start/end states
+- Great for modeling business processes, workflows, and complex algorithms
+
+### Key Elements
+
+| Symbol | Meaning |
+|---|---|
+| Filled circle | Start (initial node) |
+| Filled circle with ring | End (final node) |
+| Rounded rectangle | Activity/Action step |
+| Diamond | Decision / branch |
+| Thick horizontal bar | Fork (parallel split) or Join (parallel merge) |
+| Arrow | Control flow |
+| Vertical swim lane | Responsibility area (which actor does what) |
+
+### When to Use
+- Modeling a workflow or business process end-to-end
+- Showing complex conditional logic visually
+- Documenting the steps inside a use case
+
+### Example: Book Borrowing Activity Diagram
+
+```
+        ●  (Start)
+        |
+        ▼
+[ Member searches for book ]
+        |
+        ▼
+    < Book available? >
+   /                   \
+ Yes                    No
+  |                      |
+  ▼                      ▼
+[ Reserve book ]    [ Add to waitlist ]
+  |                      |
+  ▼                      ▼
+[ Issue loan record ]   [ Notify when available ]
+  |
+  ▼
+[ Member collects book ]
+  |
+  ▼
+        ⊙  (End)
+```
+
+### Swim Lane Example (Borrow Book — two actors)
+
+```
+| Member                  | Librarian                     |
+|-------------------------|-------------------------------|
+| Search for book         |                               |
+| Request borrow          |                               |
+|                         | Verify membership             |
+|                         | Check book availability       |
+|                         | < Available? >                |
+|                         |   Yes → Issue book            |
+|                         |   No  → Inform member         |
+| Receive book            |                               |
+```
+
+---
+
+## 🔁 Sequence Diagram
+
+### What It Shows
+- Interactions **between objects over time** (time flows top → bottom)
+- The order of method calls and messages
+- Return values, conditions, and loops
+
+### Key Elements
+
+| Element | Symbol | Meaning |
+|---|---|---|
+| **Lifeline** | Box + dashed vertical line | Represents an object/participant |
+| **Activation bar** | Thin rectangle on lifeline | Shows when object is active/executing |
+| **Synchronous message** | ——→ solid arrow | Caller waits for return |
+| **Return message** | - - → dashed arrow | Return value to caller |
+| **Asynchronous message** | —→ open arrowhead | Fire-and-forget, caller doesn't wait |
+| **Self-call** | Arrow loops back | Object calls its own method |
+| `alt` frame | Box with `alt` label | Conditional block (if/else) |
+| `loop` frame | Box with `loop` label | Repeated block |
+| `opt` frame | Box with `opt` label | Optional block |
+
+### When to Use
+- Showing the exact order of method calls for a specific use case
+- Revealing which objects communicate and how
+- Catching over-coupling early (too many arrows from one object = SRP smell)
+
+### Example: Place Order Sequence Diagram
+
+```
+Client          OrderController     OrderService      Database
+  |                   |                  |               |
+  |—— placeOrder() ——→|                  |               |
+  |                   |—— process() ————→|               |
+  |                   |                  |—— save() ————→|
+  |                   |                  |               |
+  |                   |                  |←— success ——— |
+  |                   |←—— confirmed ————|               |
+  |←—— 200 OK ————————|                  |               |
+```
+
+### Example with alt block: Login Sequence
+
+```
+User        LoginController     AuthService      UserRepository
+  |               |                  |                 |
+  |— login(u,p) —→|                  |                 |
+  |               |— authenticate() →|                 |
+  |               |                  |— findUser(u) ——→|
+  |               |                  |←— User object ——|
+  |               |                  |                 |
+  |               |     alt [valid credentials]        |
+  |               |                  |                 |
+  |               |                  | (verify password)|
+  |               |←— token ─────────|                 |
+  |←— 200 + token—|                  |                 |
+  |               |                  |                 |
+  |               |     alt [invalid credentials]      |
+  |               |←— AuthException ─|                 |
+  |←— 401 ────────|                  |                 |
+```
+
+---
+
+## 🔗 UML Relationships & Cardinality Quick Reference
+
+### Relationship Strength (weakest → strongest)
+```
+Dependency  →  Association  →  Aggregation  →  Composition
+   (uses)       (knows)          (has)           (owns/part-of)
+```
+
+### Key Differences to Know for Interviews
+
+| | Aggregation | Composition |
+|---|---|---|
+| Ownership | Weak (A has B) | Strong (A owns B) |
+| Lifecycle | B exists without A | B destroyed when A is destroyed |
+| Diamond | Empty ◇ | Filled ◆ |
+| Example | `Team` ◇——`Player` | `House` ◆——`Room` |
+
+### Inheritance vs Realization
+
+| | Inheritance (Extends) | Realization (Implements) |
+|---|---|---|
+| Arrow | Solid line, hollow triangle | Dashed line, hollow triangle |
+| Used for | Class extends class | Class implements interface |
+| Example | `Dog` extends `Animal` | `MySQLDB` implements `Database` |
+
+---
+
+## 📋 UML Cheat Sheet
+
+### Four Key Diagrams Summary
+
+| Diagram | Answers | Use When |
+|---|---|---|
+| **Use Case** | *What* does the system do? *Who* uses it? | Requirements, scope, stakeholder comms |
+| **Class** | *What* are the entities and how do they relate? | Core structure, attributes, methods |
+| **Activity** | *How* does a workflow/process flow? | Business logic, process modeling |
+| **Sequence** | *In what order* do objects interact? | Use case internals, API call flow |
+
+### Diagram Choice Cheat Sheet
+- Interviewer asks "design this system" → start with **Class Diagram**
+- Interviewer asks "walk me through this user flow" → **Sequence Diagram**
+- Interviewer says "show me the system's features" → **Use Case Diagram**
+- Interviewer asks "how does the checkout process work" → **Activity Diagram**
+
+### Cardinality Quick Reference
+```
+1      — exactly one
+0..1   — optional (zero or one)
+*      — zero or more
+1..*   — one or more
+m..n   — specific range
+```
+
+### Visibility Quick Reference
+```
++  public
+-  private
+#  protected
+~  package-private
+```
+
+---
+
+## ⚠️ Common Mistakes in OOD Interviews
+
+### 1. Jumping to code without clarifying requirements
+- Always ask 2-3 scoping questions first.
+- Example: "Is the parking lot single or multi-floor?" before drawing anything.
+
+### 2. Modeling data, not behavior
+- Classes need meaningful methods, not just getters/setters.
+- Bad: `Book` with only `getTitle()`, `getIsbn()`.
+- Good: `Book` with `isAvailable()`, `checkout()`, `reserve()`.
+
+### 3. Using inheritance when composition fits better
+- Ask: "Is A truly a type of B, or does A just use B?"
+- Overly deep inheritance trees are a red flag.
+
+### 4. God classes
+- If one class has 15+ methods, it's doing too much — split by responsibility.
+
+### 5. Ignoring cardinality
+- Always mark 1, 0..*, 1..* on association lines.
+- Skipping cardinality signals incomplete thinking.
+
+### 6. Mixing diagram concerns
+- A sequence diagram should not show class structure.
+- A class diagram should not show temporal ordering.
+- Use the right diagram for the right purpose.
+
+### 7. Not using interfaces/abstractions
+- Concrete classes everywhere signal no awareness of DIP/OCP.
+- Always extract interfaces for services and repositories.
+
+### 8. Forgetting enumerations and utility classes
+- Status fields (`AVAILABLE`, `BORROWED`, `RESERVED`) should be enums, not raw strings.
+- Common utilities like `DateUtils`, `PriceCalculator` belong in dedicated classes.
+
+---
+
+## 🎯 Practice Exercise
+
+### Exercise 1: OOD — Design an ATM
+
+Apply the 7-step framework:
+1. **Clarify** — single bank? balance check, withdrawal, deposit?
+2. **Actors** — `Customer`, `BankSystem`, `ATMMachine`
+3. **Use Cases** — Authenticate, CheckBalance, Withdraw, Deposit, PrintReceipt
+4. **Core Objects** — `ATM`, `Card`, `Account`, `Transaction`, `Bank`, `Receipt`
+5. **Relationships** — `Customer` has `Card`; `Card` linked to `Account`; `ATM` processes `Transaction`
+6. **Attributes/Methods** — `Account.getBalance()`, `Transaction.process()`, `ATM.authenticate(Card)`
+7. **Patterns** — State pattern for ATM states (idle → card inserted → authenticated → transaction)
+
+### Exercise 2: Draw a Sequence Diagram for ATM Withdrawal
+
+```
+Customer      ATM           Bank
+   |           |              |
+   |— insert card ——→|        |
+   |           |— verify() ——→|
+   |           |←— valid ─────|
+   |← enter PIN prompt        |
+   |— PIN ————→|              |
+   |           |— checkPIN() →|
+   |           |←— ok ────────|
+   |← menu shown              |
+   |— withdraw(200) ——→|      |
+   |           |— debit(200) →|
+   |           |←— success ───|
+   |           | [dispense cash]
+   |← cash dispensed          |
+   |← receipt                 |
+```
+
+---
+
+## 📝 Key Takeaways
+
+1. Always follow the **7-step framework** — don't freehand design without structure
+2. **Use Case Diagram** = scope and actors; **Class Diagram** = structure; **Activity Diagram** = workflow; **Sequence Diagram** = interactions
+3. Cardinality on every association line — it's a detail interviewers notice
+4. Classes need **behavior** (methods), not just data
+5. **Prefer interfaces** over concrete dependencies everywhere
+6. Enums > magic strings for status fields
+7. The right diagram at the right time communicates better than showing everything at once
+
+---
+
+## ✅ Checklist
+
+- [x] Know and can apply the 7-step OOD framework
+- [x] Understand UML structural vs behavioral diagrams
+- [x] Can draw a Use Case Diagram with actors, include, extend
+- [x] Can draw a Class Diagram with relationships and cardinality
+- [x] Can draw an Activity Diagram with swim lanes and decisions
+- [x] Can draw a Sequence Diagram with alt/loop frames
+- [x] Know all UML relationship types and their differences
+- [x] Aware of common OOD interview mistakes
+
+---
+
+## 🔗 References
+
+- UML Distilled by Martin Fowler (3rd Edition)
+- Object-Oriented Analysis and Design with Applications by Grady Booch
+- Head First Object-Oriented Analysis and Design by Brett McLaughlin, Gary Pollice & David West
+- Clean Architecture by Robert C. Martin
+- Design Gurus: Grokking the Object-Oriented Design Interview
+- Refactoring Guru: UML Diagrams Overview
+- Lucidchart UML Diagram Reference Guide
+
+---
+
+**Status:** ✅ Completed on 2026-07-05  
+**Time Spent:** 2 hours  
+**Next:** Day 7 — Design Patterns: Creational Patterns (Singleton, Factory, Builder)
