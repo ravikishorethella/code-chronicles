@@ -1,0 +1,1079 @@
+---
+title: "Day 7 — Creational Design Patterns (Factory, Singleton, Builder)"
+day: 7
+phase: "Design Patterns"
+date: "2026-07-06"
+completed: true
+tags: ["Design Patterns", "Creational Patterns", "Factory", "Singleton", "Builder", "OOP"]
+---
+
+# Day 7 — Creational Design Patterns (Factory, Singleton, Builder)
+
+## 📋 Topics Covered
+
+- What are Creational Design Patterns and why they matter
+- **Factory Pattern** — Creating objects without exposing creation logic
+- **Singleton Pattern** — Ensuring a class has only one instance
+- **Builder Pattern** — Constructing complex objects step by step
+- Real-world use cases for each pattern
+- When to use (and when NOT to use) each pattern
+- Common interview questions around creational patterns
+
+---
+
+## 📚 My Learning Notes
+
+### What are Creational Design Patterns?
+
+> Creational patterns deal with **how objects are created**. They abstract the instantiation process to make code more flexible, reusable, and decoupled from specific implementations.
+
+**Why they matter:**
+- Hide complexity of object construction
+- Promote the use of interfaces over concrete classes
+- Make code easier to extend and test
+- Reduce tight coupling between creator and created objects
+
+### The Three Core Creational Patterns
+
+| Pattern | Problem it solves | Core idea |
+|---|---|---|
+| Factory | "Which class do I instantiate?" | Delegate creation to a factory method |
+| Singleton | "I need exactly one instance" | Restrict instantiation to one object |
+| Builder | "This constructor has too many params" | Build the object step by step |
+
+---
+
+## 🏭 Pattern 1 — Factory Pattern
+
+### What is it?
+
+> Define an interface for creating an object, but let subclasses or a factory method decide which class to instantiate.
+
+**In simple terms:** You ask a factory to give you an object. You don't care about *how* it's built — you just ask for what you need.
+
+### Why It Matters
+- Decouples object creation from usage
+- Easy to add new types without changing the calling code
+- Follows Open/Closed Principle — extend factory, don't modify consumers
+- Centralizes creation logic in one place
+
+### Real-World Use Cases
+- **Payment gateways** — create `StripePayment`, `PayPalPayment`, or `RazorpayPayment` based on config
+- **Notification services** — create `EmailNotification`, `SMSNotification`, or `PushNotification`
+- **Database connections** — create `MySQLConnection`, `PostgresConnection`, or `MongoConnection`
+- **Java's `Calendar.getInstance()`** — returns the right Calendar implementation for the locale
+- **`LoggerFactory.getLogger()`** in SLF4J — returns a logger without you knowing the implementation
+
+### Simple Example — Notification Factory
+
+#### ❌ Bad Approach (No Factory)
+
+```java
+// Caller must know every concrete class and use if-else
+public class AlertService {
+    public void sendAlert(String type, String message) {
+        if (type.equals("EMAIL")) {
+            EmailNotification email = new EmailNotification();
+            email.send(message);
+        } else if (type.equals("SMS")) {
+            SMSNotification sms = new SMSNotification();
+            sms.send(message);
+        } else if (type.equals("PUSH")) {
+            PushNotification push = new PushNotification();
+            push.send(message);
+        }
+        // Adding Slack requires modifying AlertService — bad!
+    }
+}
+```
+
+**Problems:**
+- Violates OCP — every new type means modifying `AlertService`
+- Caller is tightly coupled to concrete classes
+- Hard to swap implementations in tests
+
+#### ✅ Good Approach — Factory Pattern
+
+```java
+// Step 1: Define the common interface
+public interface Notification {
+    void send(String message);
+}
+
+// Step 2: Concrete implementations
+public class EmailNotification implements Notification {
+    @Override
+    public void send(String message) {
+        System.out.println("📧 Email sent: " + message);
+    }
+}
+
+public class SMSNotification implements Notification {
+    @Override
+    public void send(String message) {
+        System.out.println("📱 SMS sent: " + message);
+    }
+}
+
+public class PushNotification implements Notification {
+    @Override
+    public void send(String message) {
+        System.out.println("🔔 Push notification sent: " + message);
+    }
+}
+
+// Step 3: The Factory — centralizes creation logic
+public class NotificationFactory {
+    public static Notification create(String type) {
+        switch (type.toUpperCase()) {
+            case "EMAIL": return new EmailNotification();
+            case "SMS":   return new SMSNotification();
+            case "PUSH":  return new PushNotification();
+            default: throw new IllegalArgumentException("Unknown notification type: " + type);
+        }
+    }
+}
+
+// Step 4: Caller only talks to the factory
+public class AlertService {
+    public void sendAlert(String type, String message) {
+        Notification notification = NotificationFactory.create(type);
+        notification.send(message);
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) {
+        AlertService service = new AlertService();
+        service.sendAlert("EMAIL", "Your order has shipped!");
+        service.sendAlert("SMS", "OTP: 482910");
+        service.sendAlert("PUSH", "Flash sale starts now!");
+    }
+}
+```
+
+**Output:**
+```
+📧 Email sent: Your order has shipped!
+📱 SMS sent: OTP: 482910
+🔔 Push notification sent: Flash sale starts now!
+```
+
+**Benefits:**
+- ✅ Adding `SlackNotification` only requires: (1) new class, (2) one line in factory
+- ✅ `AlertService` never changes
+- ✅ Easy to mock `Notification` interface in unit tests
+
+### Real-World Medium Example — Payment Gateway Factory
+
+This is closer to what you'd see in an e-commerce backend:
+
+```java
+public interface PaymentGateway {
+    boolean charge(String customerId, double amount);
+    boolean refund(String transactionId);
+}
+
+public class StripeGateway implements PaymentGateway {
+    @Override
+    public boolean charge(String customerId, double amount) {
+        System.out.println("Charging $" + amount + " via Stripe for customer: " + customerId);
+        return true; // call Stripe SDK here
+    }
+
+    @Override
+    public boolean refund(String transactionId) {
+        System.out.println("Refunding Stripe transaction: " + transactionId);
+        return true;
+    }
+}
+
+public class PayPalGateway implements PaymentGateway {
+    @Override
+    public boolean charge(String customerId, double amount) {
+        System.out.println("Charging $" + amount + " via PayPal for customer: " + customerId);
+        return true;
+    }
+
+    @Override
+    public boolean refund(String transactionId) {
+        System.out.println("Refunding PayPal transaction: " + transactionId);
+        return true;
+    }
+}
+
+// Factory reads from config / environment
+public class PaymentGatewayFactory {
+    public static PaymentGateway create(String provider) {
+        switch (provider.toUpperCase()) {
+            case "STRIPE":  return new StripeGateway();
+            case "PAYPAL":  return new PayPalGateway();
+            default: throw new IllegalArgumentException("Unsupported payment provider: " + provider);
+        }
+    }
+}
+
+// Service is completely agnostic to which gateway is used
+public class CheckoutService {
+    private final PaymentGateway gateway;
+
+    public CheckoutService(String provider) {
+        this.gateway = PaymentGatewayFactory.create(provider);
+    }
+
+    public void checkout(String customerId, double amount) {
+        boolean success = gateway.charge(customerId, amount);
+        if (success) {
+            System.out.println("✅ Checkout complete!");
+        }
+    }
+}
+
+// Usage — swap providers by changing config, not code
+public class Main {
+    public static void main(String[] args) {
+        CheckoutService stripeCheckout = new CheckoutService("STRIPE");
+        stripeCheckout.checkout("cust_001", 99.99);
+
+        CheckoutService paypalCheckout = new CheckoutService("PAYPAL");
+        paypalCheckout.checkout("cust_002", 49.99);
+    }
+}
+```
+
+### When to Use Factory Pattern
+- When the exact type of object to create isn't known until runtime
+- When you want to centralize and control object creation
+- When creation logic is complex and you want to hide it
+- When you need to swap implementations (prod vs test, provider A vs B)
+
+### When NOT to Use
+- When you only have one concrete class (overkill)
+- When object creation is trivial and won't change
+
+---
+
+## 🔒 Pattern 2 — Singleton Pattern
+
+### What is it?
+
+> Ensure a class has **only one instance** and provide a **global point of access** to it.
+
+**In simple terms:** No matter how many times you ask for the object, you always get the *same one*.
+
+### Why It Matters
+- Prevents multiple conflicting instances (e.g., two DB connection pools)
+- Saves resources (one cache, one config object)
+- Provides a shared state across the application
+- Controls access to a shared resource
+
+### Real-World Use Cases
+- **Database connection pool** — one pool shared by the whole app (`HikariCP`, `c3p0`)
+- **Application config** — one config object loaded once at startup
+- **Logger** — `Logger.getInstance()` returns the same logger throughout the app
+- **Cache manager** — one in-memory cache (e.g., Guava Cache, Redis client instance)
+- **Thread pool** — `Executors.newFixedThreadPool()` managed as a singleton service
+- **Spring Beans** — all Spring beans are singletons by default in the application context
+
+### Simple Example — Application Config
+
+#### ❌ Bad Approach (No Singleton)
+
+```java
+// Each time someone creates a new Config, it re-reads the file
+// Two parts of the app could have different config states!
+public class AppConfig {
+    private Map<String, String> properties;
+
+    public AppConfig() {
+        // Imagine this reads from a file — called multiple times = wasteful
+        this.properties = loadFromFile("application.properties");
+    }
+
+    private Map<String, String> loadFromFile(String filename) {
+        // Expensive file I/O every time!
+        return new HashMap<>();
+    }
+
+    public String get(String key) {
+        return properties.get(key);
+    }
+}
+
+// Two separate instances — inconsistent state risk
+AppConfig config1 = new AppConfig();
+AppConfig config2 = new AppConfig(); // reads file again!
+```
+
+#### ✅ Good Approach — Singleton Pattern
+
+```java
+public class AppConfig {
+    // Step 1: Hold the single instance (volatile for thread safety)
+    private static volatile AppConfig instance;
+
+    private Map<String, String> properties;
+
+    // Step 2: Private constructor — nobody can call new AppConfig()
+    private AppConfig() {
+        this.properties = new HashMap<>();
+        // Load config once
+        properties.put("db.url", "jdbc:mysql://localhost:3306/mydb");
+        properties.put("db.maxPool", "10");
+        properties.put("app.name", "CodeChronicles");
+        System.out.println("✅ Config loaded once.");
+    }
+
+    // Step 3: Public accessor — thread-safe double-checked locking
+    public static AppConfig getInstance() {
+        if (instance == null) {
+            synchronized (AppConfig.class) {
+                if (instance == null) {
+                    instance = new AppConfig();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public String get(String key) {
+        return properties.getOrDefault(key, "NOT FOUND");
+    }
+}
+
+// Usage
+public class DatabaseService {
+    public void connect() {
+        AppConfig config = AppConfig.getInstance(); // same instance
+        String url = config.get("db.url");
+        System.out.println("Connecting to: " + url);
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        AppConfig c1 = AppConfig.getInstance();
+        AppConfig c2 = AppConfig.getInstance();
+        AppConfig c3 = AppConfig.getInstance();
+
+        System.out.println("Same instance? " + (c1 == c2 && c2 == c3)); // true
+        System.out.println("App name: " + c1.get("app.name"));
+
+        DatabaseService db = new DatabaseService();
+        db.connect();
+    }
+}
+```
+
+**Output:**
+```
+✅ Config loaded once.
+Same instance? true
+App name: CodeChronicles
+Connecting to: jdbc:mysql://localhost:3306/mydb
+```
+
+### Real-World Medium Example — Database Connection Pool
+
+```java
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class ConnectionPool {
+    private static volatile ConnectionPool instance;
+
+    private final BlockingQueue<String> pool; // Simulating connections with strings
+    private static final int MAX_POOL_SIZE = 5;
+
+    private ConnectionPool() {
+        pool = new LinkedBlockingQueue<>(MAX_POOL_SIZE);
+        for (int i = 1; i <= MAX_POOL_SIZE; i++) {
+            pool.offer("Connection-" + i);
+        }
+        System.out.println("🔌 Connection pool initialized with " + MAX_POOL_SIZE + " connections.");
+    }
+
+    public static ConnectionPool getInstance() {
+        if (instance == null) {
+            synchronized (ConnectionPool.class) {
+                if (instance == null) {
+                    instance = new ConnectionPool();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public String acquireConnection() throws InterruptedException {
+        String conn = pool.take(); // blocks if no connection available
+        System.out.println("🟢 Acquired: " + conn);
+        return conn;
+    }
+
+    public void releaseConnection(String connection) {
+        pool.offer(connection);
+        System.out.println("🔴 Released: " + connection);
+    }
+
+    public int availableConnections() {
+        return pool.size();
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) throws InterruptedException {
+        ConnectionPool pool1 = ConnectionPool.getInstance();
+        ConnectionPool pool2 = ConnectionPool.getInstance();
+
+        System.out.println("Same pool? " + (pool1 == pool2)); // true — same singleton
+
+        String conn = pool1.acquireConnection();
+        System.out.println("Available: " + pool1.availableConnections()); // 4
+
+        pool1.releaseConnection(conn);
+        System.out.println("Available: " + pool1.availableConnections()); // 5
+    }
+}
+```
+
+**Output:**
+```
+🔌 Connection pool initialized with 5 connections.
+Same pool? true
+🟢 Acquired: Connection-1
+Available: 4
+🔴 Released: Connection-1
+Available: 5
+```
+
+### ⚠️ Singleton Pitfalls
+
+| Pitfall | Description | Solution |
+|---|---|---|
+| Thread safety | Two threads create two instances | Use `synchronized` + double-checked locking or enum |
+| Testability | Hard to mock a singleton in unit tests | Use dependency injection instead of `getInstance()` |
+| Hidden dependencies | Callers can grab the singleton from anywhere | Inject via constructor for transparency |
+| Global state | Shared mutable state causes subtle bugs | Keep singletons immutable or use with care |
+
+### Enum Singleton (Best Practice in Java)
+
+```java
+// Simplest and most robust Singleton in Java
+// Thread-safe by JVM, serialization-safe, reflection-safe
+public enum AppLogger {
+    INSTANCE;
+
+    public void log(String message) {
+        System.out.println("[LOG] " + message);
+    }
+}
+
+// Usage
+AppLogger.INSTANCE.log("Application started");
+AppLogger.INSTANCE.log("Processing request...");
+```
+
+### When to Use Singleton Pattern
+- Exactly one shared resource needed: config, logger, connection pool, cache
+- The object is expensive to create and stateless (or immutable)
+- You need a coordinating object across the whole application
+
+### When NOT to Use
+- When the class holds mutable state that varies per user/request (use request-scoped beans instead)
+- When you want easy unit testing (prefer dependency injection)
+- Avoid using Singleton as a global variable dumping ground
+
+---
+
+## 🏗️ Pattern 3 — Builder Pattern
+
+### What is it?
+
+> Separate the construction of a complex object from its representation, so that the same construction process can create different representations.
+
+**In simple terms:** Instead of a constructor with 10 parameters (some optional, some required), you use a fluent step-by-step builder.
+
+### Why It Matters
+- Eliminates "telescoping constructors" (constructors with many parameters)
+- Makes object creation readable — you know what each value is for
+- Allows creating immutable objects with optional fields
+- Validates the object at build time
+
+### Real-World Use Cases
+- **HTTP request building** — `OkHttpClient.Request.Builder` in Java
+- **Database query builders** — `QueryBuilder` in Hibernate/JPA Criteria API
+- **Email construction** — building emails with optional CC, BCC, attachments
+- **StringBuilder** in Java — the classic built-in example
+- **Spring's `MockMvcRequestBuilders`** — building test HTTP requests
+- **AWS SDK** — `AmazonS3ClientBuilder.standard().withRegion(...).build()`
+
+### Simple Example — Building an Email
+
+#### ❌ Bad Approach (Telescoping Constructor)
+
+```java
+// Constructor hell — which parameter is which?
+public class Email {
+    public Email(String to, String subject, String body) { }
+    public Email(String to, String cc, String subject, String body) { }
+    public Email(String to, String cc, String bcc, String subject, String body) { }
+    public Email(String to, String cc, String bcc, String subject, String body, boolean isHtml) { }
+    // Impossible to know what goes where at the call site!
+}
+
+// What does this even mean?
+Email email = new Email("a@b.com", null, "cc@b.com", "Hello", "Hi there", true);
+//                                  ^^^^ is this CC or BCC? confusing!
+```
+
+#### ✅ Good Approach — Builder Pattern
+
+```java
+public class Email {
+    // All fields — some required, some optional
+    private final String to;          // required
+    private final String subject;     // required
+    private final String body;        // required
+    private final String cc;          // optional
+    private final String bcc;         // optional
+    private final boolean isHtml;     // optional, default false
+
+    // Private constructor — only the Builder can call this
+    private Email(Builder builder) {
+        this.to      = builder.to;
+        this.subject = builder.subject;
+        this.body    = builder.body;
+        this.cc      = builder.cc;
+        this.bcc     = builder.bcc;
+        this.isHtml  = builder.isHtml;
+    }
+
+    // Getters
+    public String getTo()      { return to; }
+    public String getSubject() { return subject; }
+    public String getBody()    { return body; }
+    public String getCc()      { return cc; }
+    public String getBcc()     { return bcc; }
+    public boolean isHtml()    { return isHtml; }
+
+    @Override
+    public String toString() {
+        return "Email{to='" + to + "', subject='" + subject + 
+               "', cc='" + cc + "', bcc='" + bcc + 
+               "', isHtml=" + isHtml + "}";
+    }
+
+    // Static nested Builder class
+    public static class Builder {
+        // Required
+        private final String to;
+        private final String subject;
+        private final String body;
+
+        // Optional — defaults
+        private String cc      = null;
+        private String bcc     = null;
+        private boolean isHtml = false;
+
+        // Constructor enforces required fields
+        public Builder(String to, String subject, String body) {
+            if (to == null || to.isEmpty()) throw new IllegalArgumentException("'to' is required");
+            if (subject == null || subject.isEmpty()) throw new IllegalArgumentException("'subject' is required");
+            this.to      = to;
+            this.subject = subject;
+            this.body    = body;
+        }
+
+        public Builder cc(String cc) {
+            this.cc = cc;
+            return this; // fluent — enables chaining
+        }
+
+        public Builder bcc(String bcc) {
+            this.bcc = bcc;
+            return this;
+        }
+
+        public Builder html(boolean isHtml) {
+            this.isHtml = isHtml;
+            return this;
+        }
+
+        public Email build() {
+            return new Email(this);
+        }
+    }
+}
+
+// Usage — clean, readable, self-documenting
+public class Main {
+    public static void main(String[] args) {
+
+        // Simple email — only required fields
+        Email simple = new Email.Builder("user@example.com", "Welcome!", "Thanks for signing up.")
+                .build();
+
+        // Full email — with optional fields
+        Email full = new Email.Builder("user@example.com", "Your Invoice", "<h1>Invoice</h1>")
+                .cc("manager@example.com")
+                .bcc("audit@example.com")
+                .html(true)
+                .build();
+
+        System.out.println(simple);
+        System.out.println(full);
+    }
+}
+```
+
+**Output:**
+```
+Email{to='user@example.com', subject='Welcome!', cc='null', bcc='null', isHtml=false}
+Email{to='user@example.com', subject='Your Invoice', cc='manager@example.com', bcc='audit@example.com', isHtml=true}
+```
+
+### Real-World Medium Example — HTTP Request Builder
+
+This models something like OkHttp or Retrofit request building:
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class HttpRequest {
+    private final String url;           // required
+    private final String method;        // required (GET, POST, PUT, DELETE)
+    private final Map<String, String> headers;
+    private final String body;          // optional — for POST/PUT
+    private final int timeoutSeconds;
+
+    private HttpRequest(Builder builder) {
+        this.url            = builder.url;
+        this.method         = builder.method;
+        this.headers        = builder.headers;
+        this.body           = builder.body;
+        this.timeoutSeconds = builder.timeoutSeconds;
+    }
+
+    public void execute() {
+        System.out.println("🌐 " + method + " " + url);
+        System.out.println("   Headers: " + headers);
+        if (body != null) {
+            System.out.println("   Body: " + body);
+        }
+        System.out.println("   Timeout: " + timeoutSeconds + "s");
+    }
+
+    public static class Builder {
+        private final String url;
+        private final String method;
+        private Map<String, String> headers = new HashMap<>();
+        private String body              = null;
+        private int timeoutSeconds       = 30; // sensible default
+
+        public Builder(String url, String method) {
+            if (url == null || url.isEmpty()) throw new IllegalArgumentException("URL is required");
+            this.url    = url;
+            this.method = method.toUpperCase();
+        }
+
+        public Builder header(String key, String value) {
+            this.headers.put(key, value);
+            return this;
+        }
+
+        public Builder body(String body) {
+            this.body = body;
+            return this;
+        }
+
+        public Builder timeout(int seconds) {
+            this.timeoutSeconds = seconds;
+            return this;
+        }
+
+        public HttpRequest build() {
+            // Validate before building
+            if ((method.equals("POST") || method.equals("PUT")) && body == null) {
+                System.out.println("⚠️  Warning: POST/PUT request has no body.");
+            }
+            return new HttpRequest(this);
+        }
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) {
+
+        // GET request
+        HttpRequest getRequest = new HttpRequest.Builder("https://api.example.com/users", "GET")
+                .header("Authorization", "Bearer token123")
+                .header("Accept", "application/json")
+                .timeout(10)
+                .build();
+
+        getRequest.execute();
+
+        System.out.println("---");
+
+        // POST request
+        HttpRequest postRequest = new HttpRequest.Builder("https://api.example.com/users", "POST")
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer token123")
+                .body("{\"name\": \"John\", \"email\": \"john@example.com\"}")
+                .timeout(15)
+                .build();
+
+        postRequest.execute();
+    }
+}
+```
+
+**Output:**
+```
+🌐 GET https://api.example.com/users
+   Headers: {Authorization=Bearer token123, Accept=application/json}
+   Timeout: 10s
+---
+🌐 POST https://api.example.com/users
+   Headers: {Content-Type=application/json, Authorization=Bearer token123}
+   Body: {"name": "John", "email": "john@example.com"}
+   Timeout: 15s
+```
+
+### Lombok @Builder (Modern Java)
+
+In real Spring Boot projects, you rarely write builders by hand — you use **Lombok**:
+
+```java
+import lombok.Builder;
+import lombok.Getter;
+import lombok.ToString;
+
+@Getter
+@Builder
+@ToString
+public class UserProfile {
+    private final String username;    // required
+    private final String email;       // required
+    @Builder.Default
+    private final String role = "USER";
+    @Builder.Default
+    private final boolean active = true;
+    private final String avatarUrl;   // optional
+    private final String bio;         // optional
+}
+
+// Usage — Lombok generates the builder automatically
+UserProfile profile = UserProfile.builder()
+        .username("john_doe")
+        .email("john@example.com")
+        .role("ADMIN")
+        .bio("Backend engineer at Acme Corp.")
+        .build();
+
+System.out.println(profile);
+```
+
+### When to Use Builder Pattern
+- Object has more than 3-4 constructor parameters
+- Some parameters are optional — you don't want to pass `null` everywhere
+- You want to enforce immutability after creation
+- Construction involves validation or complex setup logic
+
+### When NOT to Use
+- Simple objects with 1-2 fields (overkill)
+- When you truly need a mutable object (use plain setters)
+
+---
+
+## 🎯 Practice Exercises
+
+### Exercise 1: Factory — Database Connection Factory
+
+**Task:** Create a `DatabaseFactory` that returns `MySQLDatabase`, `PostgresDatabase`, or `MongoDatabase` based on a config string.
+
+```java
+public interface Database {
+    void connect();
+    void query(String sql);
+    void disconnect();
+}
+
+public class MySQLDatabase implements Database {
+    @Override
+    public void connect()           { System.out.println("🐬 MySQL connected"); }
+    @Override
+    public void query(String sql)   { System.out.println("🐬 MySQL query: " + sql); }
+    @Override
+    public void disconnect()        { System.out.println("🐬 MySQL disconnected"); }
+}
+
+public class PostgresDatabase implements Database {
+    @Override
+    public void connect()           { System.out.println("🐘 Postgres connected"); }
+    @Override
+    public void query(String sql)   { System.out.println("🐘 Postgres query: " + sql); }
+    @Override
+    public void disconnect()        { System.out.println("🐘 Postgres disconnected"); }
+}
+
+public class DatabaseFactory {
+    public static Database create(String type) {
+        switch (type.toUpperCase()) {
+            case "MYSQL":    return new MySQLDatabase();
+            case "POSTGRES": return new PostgresDatabase();
+            default: throw new IllegalArgumentException("Unknown DB type: " + type);
+        }
+    }
+}
+
+// Usage
+Database db = DatabaseFactory.create("POSTGRES");
+db.connect();
+db.query("SELECT * FROM users");
+db.disconnect();
+```
+
+---
+
+### Exercise 2: Singleton — Global Event Bus
+
+**Task:** Implement a simple publish/subscribe event bus as a singleton.
+
+```java
+import java.util.*;
+import java.util.function.Consumer;
+
+public class EventBus {
+    private static volatile EventBus instance;
+    private final Map<String, List<Consumer<Object>>> subscribers = new HashMap<>();
+
+    private EventBus() {
+        System.out.println("📡 EventBus initialized");
+    }
+
+    public static EventBus getInstance() {
+        if (instance == null) {
+            synchronized (EventBus.class) {
+                if (instance == null) {
+                    instance = new EventBus();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public void subscribe(String event, Consumer<Object> handler) {
+        subscribers.computeIfAbsent(event, k -> new ArrayList<>()).add(handler);
+    }
+
+    public void publish(String event, Object payload) {
+        List<Consumer<Object>> handlers = subscribers.getOrDefault(event, Collections.emptyList());
+        System.out.println("📢 Publishing [" + event + "] to " + handlers.size() + " subscriber(s)");
+        handlers.forEach(h -> h.accept(payload));
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) {
+        EventBus bus = EventBus.getInstance();
+
+        bus.subscribe("USER_REGISTERED", payload ->
+            System.out.println("📧 Send welcome email to: " + payload));
+        bus.subscribe("USER_REGISTERED", payload ->
+            System.out.println("🎁 Grant free credits to: " + payload));
+
+        bus.publish("USER_REGISTERED", "john@example.com");
+    }
+}
+```
+
+**Output:**
+```
+📡 EventBus initialized
+📢 Publishing [USER_REGISTERED] to 2 subscriber(s)
+📧 Send welcome email to: john@example.com
+🎁 Grant free credits to: john@example.com
+```
+
+---
+
+### Exercise 3: Builder — Order Builder
+
+**Task:** Create an `Order` builder for an e-commerce system.
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class Order {
+    private final String orderId;
+    private final String customerId;
+    private final List<String> items;
+    private final String couponCode;
+    private final String shippingAddress;
+    private final String paymentMethod;
+    private final boolean giftWrap;
+
+    private Order(Builder builder) {
+        this.orderId         = builder.orderId;
+        this.customerId      = builder.customerId;
+        this.items           = builder.items;
+        this.couponCode      = builder.couponCode;
+        this.shippingAddress = builder.shippingAddress;
+        this.paymentMethod   = builder.paymentMethod;
+        this.giftWrap        = builder.giftWrap;
+    }
+
+    @Override
+    public String toString() {
+        return "\n===== ORDER =====" +
+               "\nOrder ID : " + orderId +
+               "\nCustomer : " + customerId +
+               "\nItems    : " + items +
+               "\nCoupon   : " + (couponCode != null ? couponCode : "None") +
+               "\nAddress  : " + shippingAddress +
+               "\nPayment  : " + paymentMethod +
+               "\nGift Wrap: " + giftWrap +
+               "\n=================";
+    }
+
+    public static class Builder {
+        private final String orderId;
+        private final String customerId;
+        private final List<String> items = new ArrayList<>();
+        private String couponCode      = null;
+        private String shippingAddress = "Default Address";
+        private String paymentMethod   = "CREDIT_CARD";
+        private boolean giftWrap       = false;
+
+        public Builder(String orderId, String customerId) {
+            this.orderId     = orderId;
+            this.customerId  = customerId;
+        }
+
+        public Builder addItem(String item) {
+            this.items.add(item);
+            return this;
+        }
+
+        public Builder coupon(String code) {
+            this.couponCode = code;
+            return this;
+        }
+
+        public Builder shippingAddress(String address) {
+            this.shippingAddress = address;
+            return this;
+        }
+
+        public Builder paymentMethod(String method) {
+            this.paymentMethod = method;
+            return this;
+        }
+
+        public Builder giftWrap(boolean wrap) {
+            this.giftWrap = wrap;
+            return this;
+        }
+
+        public Order build() {
+            if (items.isEmpty()) throw new IllegalStateException("Order must have at least one item");
+            return new Order(this);
+        }
+    }
+}
+
+// Usage
+public class Main {
+    public static void main(String[] args) {
+        Order order = new Order.Builder("ORD-1001", "CUST-42")
+                .addItem("Java Programming Book")
+                .addItem("Mechanical Keyboard")
+                .coupon("SAVE20")
+                .shippingAddress("123 Main St, New York, NY 10001")
+                .paymentMethod("UPI")
+                .giftWrap(true)
+                .build();
+
+        System.out.println(order);
+    }
+}
+```
+
+**Output:**
+```
+===== ORDER =====
+Order ID : ORD-1001
+Customer : CUST-42
+Items    : [Java Programming Book, Mechanical Keyboard]
+Coupon   : SAVE20
+Address  : 123 Main St, New York, NY 10001
+Payment  : UPI
+Gift Wrap: true
+=================
+```
+
+---
+
+## 📝 Key Takeaways
+
+1. **Factory Pattern** → Use when you need to decide *which* class to instantiate at runtime; centralizes creation and decouples caller from concrete types
+2. **Singleton Pattern** → Use when exactly one shared instance is needed; always make it thread-safe with double-checked locking or use enum
+3. **Builder Pattern** → Use when constructors grow large or have many optional params; makes code self-documenting and enforces immutability
+4. All three patterns are about **controlling how objects are created** — not what they do
+5. Factory + OCP: adding a new type = new class + one line in factory, zero changes elsewhere
+6. Singleton in Spring: most `@Service`, `@Repository`, `@Component` beans are singletons managed by the container — you usually don't write your own
+7. Builder in real projects: use **Lombok `@Builder`** to avoid boilerplate; understand the pattern before reaching for the annotation
+8. Overusing Singleton leads to hidden global state — prefer dependency injection in modern frameworks
+
+---
+
+## 🔍 Interview Cheat Sheet
+
+| Question | Quick Answer |
+|---|---|
+| "What is the Factory pattern?" | Centralizes object creation; caller asks factory for an object by type without knowing the concrete class |
+| "Why use Singleton?" | One shared instance for expensive or global resources (config, pool, logger) |
+| "How do you make Singleton thread-safe?" | Double-checked locking with `volatile`, or use enum Singleton |
+| "What problem does Builder solve?" | Eliminates telescoping constructors; makes optional parameters explicit and readable |
+| "How is Builder different from Constructor?" | Builder allows fluent step-by-step construction with optional params and validation before `build()` |
+| "Factory vs Abstract Factory?" | Factory creates one product type; Abstract Factory creates families of related products |
+| "Is Singleton an anti-pattern?" | Can be, if abused as global mutable state. Prefer DI frameworks managing singleton beans |
+
+---
+
+## ✅ Checklist
+
+- [x] Understand what Creational Patterns are and why they exist
+- [x] Implement Factory Pattern with notification and payment examples
+- [x] Understand real-world Factory usage (SLF4J, JDBC, Spring)
+- [x] Implement Singleton with thread-safe double-checked locking
+- [x] Understand Singleton pitfalls (thread safety, testability, global state)
+- [x] Know Enum Singleton as best practice in Java
+- [x] Implement Builder Pattern with Email and HttpRequest examples
+- [x] Know when to use Lombok `@Builder`
+- [x] Practiced all three patterns with exercises
+- [x] Know which pattern to recommend in an interview and why
+
+---
+
+## 🔗 References
+
+- **Design Patterns: Elements of Reusable Object-Oriented Software** — Gang of Four (GoF)
+- **Head First Design Patterns** — Freeman & Robson (O'Reilly)
+- **Refactoring Guru** — [Factory Method](https://refactoring.guru/design-patterns/factory-method), [Singleton](https://refactoring.guru/design-patterns/singleton), [Builder](https://refactoring.guru/design-patterns/builder)
+- **Effective Java (3rd Edition)** — Joshua Bloch (Item 2: Builder; Item 3: Singleton with Enum)
+- **Design Gurus** — Grokking the Low Level Design Interview
+- **Baeldung** — Java Design Patterns series
+
+---
+
+**Status:** ✅ Completed on 2026-07-06  
+**Time Spent:** 2 hours  
+**Next:** Day 8 — Structural Design Patterns (Adapter, Decorator, Facade)
