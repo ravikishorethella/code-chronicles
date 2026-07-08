@@ -1,0 +1,668 @@
+---
+title: "Day 8 — Behavioral Design Patterns (Strategy, Observer, Command)"
+day: 8
+phase: "Design Patterns"
+date: "2026-07-08"
+completed: true
+tags: ["Design Patterns", "Behavioral Patterns", "Strategy", "Observer", "Command", "OOP"]
+---
+
+# Day 8 — Behavioral Design Patterns (Strategy, Observer, Command)
+
+## 📋 Topics Covered
+
+- What are Behavioral Design Patterns and why they matter
+- **Strategy Pattern** — Choosing an algorithm/behavior at runtime
+- **Observer Pattern** — One-to-many updates when state changes
+- **Command Pattern** — Wrapping actions into objects (with undo/redo)
+- Real-world use cases for each pattern
+- When to use (and when NOT to use) each pattern
+- Common interview questions around behavioral patterns
+
+---
+
+## 📚 My Learning Notes
+
+### What are Behavioral Design Patterns?
+
+> Behavioral patterns deal with **how objects communicate and share responsibilities**. They help define clean interaction rules between objects so the system stays flexible as it grows.
+
+**Why they matter:**
+- Reduce tight coupling between objects
+- Keep business logic easy to change and extend
+- Improve readability by separating responsibilities
+- Make systems easier to test and maintain
+
+### The Three Core Behavioral Patterns
+
+| Pattern | Problem it solves | Core idea |
+|---|---|---|
+| Strategy | "I need multiple ways to do the same thing" | Encapsulate interchangeable behaviors behind one interface |
+| Observer | "Many components should react to one event" | Publisher notifies all subscribed observers automatically |
+| Command | "I need to execute, queue, and undo actions" | Represent each action as a command object |
+
+---
+
+## 💳 Pattern 1 — Strategy Pattern (Payments)
+
+### What is it?
+
+> Define a family of algorithms, put each one in a separate class, and make them interchangeable at runtime.
+
+**In simple terms:** You keep one payment flow, but you can plug in different payment methods (UPI, card, wallet) without changing checkout code.
+
+### Why It Matters
+- Removes large `if-else` or `switch` blocks from core logic
+- Makes adding a new behavior easy (new class, minimal changes)
+- Promotes Open/Closed Principle
+- Keeps each algorithm focused and testable
+
+### Real-World Use Cases
+- **E-commerce payments** — card, UPI, net banking, wallets
+- **Shipping cost calculation** — standard, express, same-day
+- **Discount engines** — coupon strategy, loyalty strategy, festive strategy
+- **Authentication** — password login, OTP login, OAuth login
+
+### Simple Example — Payment at Checkout
+
+#### ❌ Bad Approach (No Strategy)
+
+```java
+public class CheckoutService {
+	public void pay(String method, double amount) {
+		if ("CARD".equals(method)) {
+			System.out.println("Paid ₹" + amount + " using Credit/Debit Card");
+		} else if ("UPI".equals(method)) {
+			System.out.println("Paid ₹" + amount + " using UPI");
+		} else if ("WALLET".equals(method)) {
+			System.out.println("Paid ₹" + amount + " using Wallet");
+		} else {
+			throw new IllegalArgumentException("Unsupported payment method: " + method);
+		}
+	}
+}
+```
+
+**Problems:**
+- Every new payment method requires changing `CheckoutService`
+- Hard to test each payment path independently
+- Violates Open/Closed Principle
+
+#### ✅ Good Approach — Strategy Pattern
+
+```java
+// Step 1: Strategy interface
+public interface PaymentStrategy {
+	void pay(double amount);
+}
+
+// Step 2: Concrete strategies
+public class CardPayment implements PaymentStrategy {
+	@Override
+	public void pay(double amount) {
+		System.out.println("💳 Paid ₹" + amount + " using Card");
+	}
+}
+
+public class UpiPayment implements PaymentStrategy {
+	@Override
+	public void pay(double amount) {
+		System.out.println("📱 Paid ₹" + amount + " using UPI");
+	}
+}
+
+public class WalletPayment implements PaymentStrategy {
+	@Override
+	public void pay(double amount) {
+		System.out.println("👛 Paid ₹" + amount + " using Wallet");
+	}
+}
+
+// Step 3: Context
+public class CheckoutService {
+	private PaymentStrategy paymentStrategy;
+
+	public void setPaymentStrategy(PaymentStrategy paymentStrategy) {
+		this.paymentStrategy = paymentStrategy;
+	}
+
+	public void checkout(double amount) {
+		if (paymentStrategy == null) {
+			throw new IllegalStateException("Payment strategy not selected");
+		}
+		paymentStrategy.pay(amount);
+		System.out.println("✅ Order placed successfully\n");
+	}
+}
+
+// Usage
+public class Main {
+	public static void main(String[] args) {
+		CheckoutService checkout = new CheckoutService();
+
+		checkout.setPaymentStrategy(new CardPayment());
+		checkout.checkout(1499.0);
+
+		checkout.setPaymentStrategy(new UpiPayment());
+		checkout.checkout(799.0);
+
+		checkout.setPaymentStrategy(new WalletPayment());
+		checkout.checkout(299.0);
+	}
+}
+```
+
+**Output:**
+```
+💳 Paid ₹1499.0 using Card
+✅ Order placed successfully
+
+📱 Paid ₹799.0 using UPI
+✅ Order placed successfully
+
+👛 Paid ₹299.0 using Wallet
+✅ Order placed successfully
+```
+
+### Medium Example — Payment Strategy with Validation and Charge
+
+```java
+public interface PaymentStrategy {
+	boolean validate();
+	String pay(String orderId, double amount);
+}
+
+public class CardPaymentStrategy implements PaymentStrategy {
+	private final String cardNumber;
+
+	public CardPaymentStrategy(String cardNumber) {
+		this.cardNumber = cardNumber;
+	}
+
+	@Override
+	public boolean validate() {
+		return cardNumber != null && cardNumber.length() == 16;
+	}
+
+	@Override
+	public String pay(String orderId, double amount) {
+		return "CARD_TXN_" + orderId + "_" + (int) amount;
+	}
+}
+
+public class UpiPaymentStrategy implements PaymentStrategy {
+	private final String upiId;
+
+	public UpiPaymentStrategy(String upiId) {
+		this.upiId = upiId;
+	}
+
+	@Override
+	public boolean validate() {
+		return upiId != null && upiId.contains("@");
+	}
+
+	@Override
+	public String pay(String orderId, double amount) {
+		return "UPI_TXN_" + orderId + "_" + (int) amount;
+	}
+}
+
+public class PaymentProcessor {
+	private final PaymentStrategy strategy;
+
+	public PaymentProcessor(PaymentStrategy strategy) {
+		this.strategy = strategy;
+	}
+
+	public void process(String orderId, double amount) {
+		if (!strategy.validate()) {
+			throw new IllegalArgumentException("Payment details are invalid");
+		}
+		String transactionId = strategy.pay(orderId, amount);
+		System.out.println("✅ Payment success. Transaction ID: " + transactionId);
+	}
+}
+
+// Usage
+public class Main {
+	public static void main(String[] args) {
+		PaymentProcessor p1 = new PaymentProcessor(new CardPaymentStrategy("1234123412341234"));
+		p1.process("ORD-101", 2500);
+
+		PaymentProcessor p2 = new PaymentProcessor(new UpiPaymentStrategy("kishan@okaxis"));
+		p2.process("ORD-102", 999);
+	}
+}
+```
+
+### When to Use Strategy Pattern
+- Multiple ways to perform one business action
+- Need to choose behavior at runtime
+- Frequent addition of new algorithms/flows
+
+### When NOT to Use
+- Only one behavior exists and unlikely to change
+- Very small logic where extra classes would be unnecessary overhead
+
+---
+
+## 📣 Pattern 2 — Observer Pattern (Notifications)
+
+### What is it?
+
+> Define a one-to-many dependency so when one object (subject) changes state, all its dependents (observers) are notified automatically.
+
+**In simple terms:** One event happens once, and multiple listeners react independently.
+
+### Why It Matters
+- Decouples event producer from event consumers
+- Easy to add/remove listeners without changing publisher
+- Great for event-driven workflows
+- Supports scalable notification pipelines
+
+### Real-World Use Cases
+- **Order updates** — notify user, warehouse, analytics when order status changes
+- **Stock alerts** — notify subscribers when product is back in stock
+- **Social media** — followers get updates when creator posts
+- **Microservices/events** — one domain event consumed by many services
+
+### Simple Example — YouTube Channel Notifications
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+interface Subscriber {
+	void update(String videoTitle);
+}
+
+class UserSubscriber implements Subscriber {
+	private final String name;
+
+	public UserSubscriber(String name) {
+		this.name = name;
+	}
+
+	@Override
+	public void update(String videoTitle) {
+		System.out.println(name + " got notified: New video -> " + videoTitle);
+	}
+}
+
+class YouTubeChannel {
+	private final List<Subscriber> subscribers = new ArrayList<>();
+
+	public void subscribe(Subscriber subscriber) {
+		subscribers.add(subscriber);
+	}
+
+	public void unsubscribe(Subscriber subscriber) {
+		subscribers.remove(subscriber);
+	}
+
+	public void publishVideo(String title) {
+		System.out.println("\n📺 Channel published: " + title);
+		for (Subscriber subscriber : subscribers) {
+			subscriber.update(title);
+		}
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		YouTubeChannel channel = new YouTubeChannel();
+
+		Subscriber a = new UserSubscriber("Aman");
+		Subscriber b = new UserSubscriber("Riya");
+
+		channel.subscribe(a);
+		channel.subscribe(b);
+
+		channel.publishVideo("Observer Pattern in 10 Minutes");
+
+		channel.unsubscribe(b);
+		channel.publishVideo("Command Pattern with Undo/Redo");
+	}
+}
+```
+
+### Medium Example — Order Notification System (Email + SMS + Push)
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+interface NotificationObserver {
+	void onOrderStatusChanged(String orderId, String status);
+}
+
+class EmailNotifier implements NotificationObserver {
+	@Override
+	public void onOrderStatusChanged(String orderId, String status) {
+		System.out.println("📧 Email: Order " + orderId + " is now " + status);
+	}
+}
+
+class SmsNotifier implements NotificationObserver {
+	@Override
+	public void onOrderStatusChanged(String orderId, String status) {
+		System.out.println("📱 SMS: Order " + orderId + " is now " + status);
+	}
+}
+
+class PushNotifier implements NotificationObserver {
+	@Override
+	public void onOrderStatusChanged(String orderId, String status) {
+		System.out.println("🔔 Push: Order " + orderId + " is now " + status);
+	}
+}
+
+class OrderService {
+	private final List<NotificationObserver> observers = new ArrayList<>();
+
+	public void addObserver(NotificationObserver observer) {
+		observers.add(observer);
+	}
+
+	public void removeObserver(NotificationObserver observer) {
+		observers.remove(observer);
+	}
+
+	public void updateOrderStatus(String orderId, String status) {
+		System.out.println("\n🧾 Updating order " + orderId + " -> " + status);
+		for (NotificationObserver observer : observers) {
+			observer.onOrderStatusChanged(orderId, status);
+		}
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		OrderService orderService = new OrderService();
+
+		orderService.addObserver(new EmailNotifier());
+		orderService.addObserver(new SmsNotifier());
+		orderService.addObserver(new PushNotifier());
+
+		orderService.updateOrderStatus("ORD-5001", "CONFIRMED");
+		orderService.updateOrderStatus("ORD-5001", "OUT_FOR_DELIVERY");
+		orderService.updateOrderStatus("ORD-5001", "DELIVERED");
+	}
+}
+```
+
+**Why this is realistic:** In production systems, these observers are often separate services consuming events from Kafka/RabbitMQ/SNS.
+
+### When to Use Observer Pattern
+- One change should trigger multiple side effects
+- Consumers should be loosely coupled and independently deployable
+- Event-driven architecture fits your domain
+
+### When NOT to Use
+- Event chain is small and fixed forever
+- Hard ordering/transaction guarantees are required across all listeners
+
+---
+
+## ↩️ Pattern 3 — Command Pattern (Undo/Redo)
+
+### What is it?
+
+> Encapsulate a request as an object, thereby letting you parameterize clients with requests, queue operations, and support undoable actions.
+
+**In simple terms:** Every user action (type, delete, paste) is turned into a command object that knows how to execute and undo itself.
+
+### Why It Matters
+- Decouples action sender (UI/button) from action receiver (business logic)
+- Enables undo/redo cleanly
+- Supports action history, macro commands, queueing, and logging
+
+### Real-World Use Cases
+- **Text editors** — undo/redo typing, deletion, formatting
+- **Design tools** — undo move/resize/rotate operations
+- **IDE actions** — refactor commands and rollback
+- **Job queues** — commands persisted and replayed later
+
+### Simple Example — Text Editor Undo
+
+```java
+import java.util.Stack;
+
+interface Command {
+	void execute();
+	void undo();
+}
+
+class TextEditor {
+	private final StringBuilder content = new StringBuilder();
+
+	public void append(String text) {
+		content.append(text);
+	}
+
+	public void deleteLast(int length) {
+		content.delete(content.length() - length, content.length());
+	}
+
+	public String getContent() {
+		return content.toString();
+	}
+}
+
+class TypeTextCommand implements Command {
+	private final TextEditor editor;
+	private final String text;
+
+	public TypeTextCommand(TextEditor editor, String text) {
+		this.editor = editor;
+		this.text = text;
+	}
+
+	@Override
+	public void execute() {
+		editor.append(text);
+	}
+
+	@Override
+	public void undo() {
+		editor.deleteLast(text.length());
+	}
+}
+
+class EditorInvoker {
+	private final Stack<Command> history = new Stack<>();
+
+	public void run(Command command) {
+		command.execute();
+		history.push(command);
+	}
+
+	public void undo() {
+		if (!history.isEmpty()) {
+			history.pop().undo();
+		}
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		TextEditor editor = new TextEditor();
+		EditorInvoker invoker = new EditorInvoker();
+
+		invoker.run(new TypeTextCommand(editor, "Hello "));
+		invoker.run(new TypeTextCommand(editor, "World"));
+		System.out.println("After typing: " + editor.getContent());
+
+		invoker.undo();
+		System.out.println("After undo: " + editor.getContent());
+	}
+}
+```
+
+### Medium Example — Undo/Redo with Two Stacks
+
+```java
+import java.util.Stack;
+
+interface Command {
+	void execute();
+	void undo();
+}
+
+class Editor {
+	private final StringBuilder text = new StringBuilder();
+
+	public void insert(String value) {
+		text.append(value);
+	}
+
+	public void removeLast(int count) {
+		text.delete(text.length() - count, text.length());
+	}
+
+	public String value() {
+		return text.toString();
+	}
+}
+
+class InsertCommand implements Command {
+	private final Editor editor;
+	private final String data;
+
+	public InsertCommand(Editor editor, String data) {
+		this.editor = editor;
+		this.data = data;
+	}
+
+	@Override
+	public void execute() {
+		editor.insert(data);
+	}
+
+	@Override
+	public void undo() {
+		editor.removeLast(data.length());
+	}
+}
+
+class CommandManager {
+	private final Stack<Command> undoStack = new Stack<>();
+	private final Stack<Command> redoStack = new Stack<>();
+
+	public void execute(Command command) {
+		command.execute();
+		undoStack.push(command);
+		redoStack.clear();
+	}
+
+	public void undo() {
+		if (undoStack.isEmpty()) return;
+		Command command = undoStack.pop();
+		command.undo();
+		redoStack.push(command);
+	}
+
+	public void redo() {
+		if (redoStack.isEmpty()) return;
+		Command command = redoStack.pop();
+		command.execute();
+		undoStack.push(command);
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		Editor editor = new Editor();
+		CommandManager manager = new CommandManager();
+
+		manager.execute(new InsertCommand(editor, "Java "));
+		manager.execute(new InsertCommand(editor, "Design "));
+		manager.execute(new InsertCommand(editor, "Patterns"));
+		System.out.println("Current: " + editor.value());
+
+		manager.undo();
+		System.out.println("After undo: " + editor.value());
+
+		manager.undo();
+		System.out.println("After second undo: " + editor.value());
+
+		manager.redo();
+		System.out.println("After redo: " + editor.value());
+	}
+}
+```
+
+**Output:**
+```
+Current: Java Design Patterns
+After undo: Java Design 
+After second undo: Java 
+After redo: Java Design 
+```
+
+### When to Use Command Pattern
+- Need undo/redo or action history
+- Need to queue, schedule, or log operations
+- Want UI and business logic to be loosely coupled
+
+### When NOT to Use
+- Only one simple action with no history/rollback need
+- Object overhead is unnecessary for tiny scripts
+
+---
+
+## 📝 Key Takeaways
+
+1. **Strategy** is best when behavior varies and must be selected at runtime (payments, discounts, authentication)
+2. **Observer** is best for event-driven updates where one event should notify many subscribers (notifications, analytics, alerts)
+3. **Command** is best for actions that need history and reversible operations (undo/redo in editors)
+4. Strategy removes conditional complexity by replacing `if-else` with polymorphism
+5. Observer reduces direct dependencies between publisher and subscribers
+6. Command makes actions first-class objects, enabling queueing, retries, and audit trails
+7. In interviews, always explain **problem → pattern fit → trade-off**, not just definitions
+8. Overusing patterns adds complexity — choose only when the problem truly needs it
+
+---
+
+## 🔍 Interview Cheat Sheet
+
+| Question | Quick Answer |
+|---|---|
+| "When would you use Strategy?" | When there are multiple interchangeable algorithms (e.g., payment methods) chosen at runtime |
+| "Observer vs Pub/Sub?" | Observer is typically in-process object-level notification; Pub/Sub is distributed messaging via broker |
+| "How does Command enable undo?" | Each command stores enough state to reverse `execute()` via `undo()` |
+| "Observer drawbacks?" | Harder debugging due to indirect flows; potential memory leaks if unsubscribe is missed |
+| "Can Strategy be selected dynamically?" | Yes — from runtime config, feature flags, user choice, or request context |
+| "Command real-life examples?" | Editor operations, IDE refactors, job queue tasks, transactional action logs |
+
+---
+
+## ✅ Checklist
+
+- [x] Understand what Behavioral Patterns are and why they exist
+- [x] Implement Strategy Pattern for payment processing
+- [x] Practice simple and medium Strategy examples
+- [x] Implement Observer Pattern for notification flows
+- [x] Understand event-driven use cases of Observer
+- [x] Implement Command Pattern for undo/redo operations
+- [x] Practice simple and medium Command examples
+- [x] Know trade-offs and interview-ready explanations
+
+---
+
+## 🔗 References
+
+- **Design Patterns: Elements of Reusable Object-Oriented Software** — Gang of Four (GoF)
+- **Head First Design Patterns** — Freeman & Robson (O'Reilly)
+- **Refactoring Guru** — [Strategy](https://refactoring.guru/design-patterns/strategy), [Observer](https://refactoring.guru/design-patterns/observer), [Command](https://refactoring.guru/design-patterns/command)
+- **Effective Java (3rd Edition)** — Joshua Bloch (for composition over inheritance and clean API design)
+- **Design Gurus** — Grokking the Low Level Design Interview
+- **Baeldung** — Java Behavioral Design Patterns series
+- **Martin Fowler** — Patterns of Enterprise Application Architecture (event and command-oriented thinking)
+
+---
+
+**Status:** ✅ Completed on 2026-07-08  
+**Time Spent:** 2 hours 15 minutes  
+**Next:** Day 9 — Structural Design Patterns (Adapter, Decorator, Facade)
