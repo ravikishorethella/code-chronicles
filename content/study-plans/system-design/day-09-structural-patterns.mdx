@@ -1,0 +1,582 @@
+---
+title: "Day 9 — Structural Design Patterns (Decorator, Adapter, Facade)"
+day: 9
+phase: "Design Patterns"
+date: "2026-07-09"
+completed: true
+tags: ["Design Patterns", "Structural Patterns", "Decorator", "Adapter", "Facade", "OOP"]
+---
+
+# Day 9 — Structural Design Patterns (Decorator, Adapter, Facade)
+
+## 📋 Topics Covered
+
+- What are Structural Design Patterns and why they matter
+- **Decorator Pattern** — Adding behavior to objects dynamically
+- **Adapter Pattern** — Making incompatible interfaces work together
+- **Facade Pattern** — Providing a simple interface over a complex subsystem
+- Real-world use cases for each pattern
+- **Decorator vs Inheritance**
+- When to use (and when NOT to use) each pattern
+- Common interview questions around structural patterns
+
+---
+
+## 📚 My Learning Notes
+
+### What are Structural Design Patterns?
+
+> Structural patterns deal with **how classes and objects are composed** to form larger, flexible structures. They help connect pieces of a system in a clean and maintainable way.
+
+**Why they matter:**
+- Make systems easier to extend without changing existing code
+- Reduce tight coupling between components
+- Help wrap or combine objects in a reusable way
+- Hide complexity from the caller when needed
+
+### The Three Core Structural Patterns
+
+| Pattern | Problem it solves | Core idea |
+|---|---|---|
+| Decorator | "I want to add features without changing the class" | Wrap the object and add behavior dynamically |
+| Adapter | "These two classes/interfaces don't match" | Convert one interface into another expected interface |
+| Facade | "This subsystem is too complex to use directly" | Expose one simple entry point over many classes |
+
+---
+
+## 🎁 Pattern 1 — Decorator Pattern
+
+### What is it?
+
+> Attach additional responsibilities to an object dynamically. Decorators provide a flexible alternative to subclassing for extending functionality.
+
+**In simple terms:** Instead of changing the original object or creating many subclasses, you wrap it and add extra behavior.
+
+### Why It Matters
+- Adds behavior without modifying existing code
+- Avoids subclass explosion
+- Lets features be combined in different ways at runtime
+- Follows Open/Closed Principle
+
+### Real-World Use Cases
+- **Coffee/custom food ordering** — base item + milk + sugar + whipped cream
+- **Java I/O streams** — `BufferedInputStream`, `DataInputStream`, etc.
+- **Logging/metrics/security wrappers** — wrap a service and add timing, auth, retry
+- **UI components** — add border, scroll, shadow, tooltip dynamically
+
+### Simple Example — Coffee Customization
+
+#### ❌ Bad Approach (Too Many Subclasses)
+
+```java
+// Problem: too many combinations
+class SimpleCoffee {}
+class CoffeeWithMilk {}
+class CoffeeWithSugar {}
+class CoffeeWithMilkAndSugar {}
+class CoffeeWithMilkSugarAndCream {}
+```
+
+**Problems:**
+- Number of subclasses grows very fast
+- Hard to maintain every possible combination
+- Not flexible at runtime
+
+#### ✅ Good Approach — Decorator Pattern
+
+```java
+// Step 1: Common component interface
+interface Coffee {
+	String getDescription();
+	double getCost();
+}
+
+// Step 2: Base concrete component
+class SimpleCoffee implements Coffee {
+	@Override
+	public String getDescription() {
+		return "Simple Coffee";
+	}
+
+	@Override
+	public double getCost() {
+		return 50.0;
+	}
+}
+
+// Step 3: Base decorator
+abstract class CoffeeDecorator implements Coffee {
+	protected final Coffee coffee;
+
+	public CoffeeDecorator(Coffee coffee) {
+		this.coffee = coffee;
+	}
+}
+
+// Step 4: Concrete decorators
+class MilkDecorator extends CoffeeDecorator {
+	public MilkDecorator(Coffee coffee) {
+		super(coffee);
+	}
+
+	@Override
+	public String getDescription() {
+		return coffee.getDescription() + ", Milk";
+	}
+
+	@Override
+	public double getCost() {
+		return coffee.getCost() + 15.0;
+	}
+}
+
+class SugarDecorator extends CoffeeDecorator {
+	public SugarDecorator(Coffee coffee) {
+		super(coffee);
+	}
+
+	@Override
+	public String getDescription() {
+		return coffee.getDescription() + ", Sugar";
+	}
+
+	@Override
+	public double getCost() {
+		return coffee.getCost() + 5.0;
+	}
+}
+
+// Usage
+public class Main {
+	public static void main(String[] args) {
+		Coffee coffee = new SimpleCoffee();
+		coffee = new MilkDecorator(coffee);
+		coffee = new SugarDecorator(coffee);
+
+		System.out.println(coffee.getDescription());
+		System.out.println("Total Cost: ₹" + coffee.getCost());
+	}
+}
+```
+
+**Output:**
+```
+Simple Coffee, Milk, Sugar
+Total Cost: ₹70.0
+```
+
+### Medium Example — Notification Service with Logging and Retry
+
+This is a more real backend example.
+
+```java
+interface NotificationService {
+	void send(String user, String message);
+}
+
+class EmailNotificationService implements NotificationService {
+	@Override
+	public void send(String user, String message) {
+		System.out.println("📧 Sending email to " + user + ": " + message);
+	}
+}
+
+abstract class NotificationDecorator implements NotificationService {
+	protected final NotificationService wrapped;
+
+	public NotificationDecorator(NotificationService wrapped) {
+		this.wrapped = wrapped;
+	}
+}
+
+class LoggingDecorator extends NotificationDecorator {
+	public LoggingDecorator(NotificationService wrapped) {
+		super(wrapped);
+	}
+
+	@Override
+	public void send(String user, String message) {
+		System.out.println("[LOG] About to send notification...");
+		wrapped.send(user, message);
+		System.out.println("[LOG] Notification sent successfully.");
+	}
+}
+
+class RetryDecorator extends NotificationDecorator {
+	public RetryDecorator(NotificationService wrapped) {
+		super(wrapped);
+	}
+
+	@Override
+	public void send(String user, String message) {
+		try {
+			wrapped.send(user, message);
+		} catch (Exception e) {
+			System.out.println("[RETRY] First attempt failed. Retrying...");
+			wrapped.send(user, message);
+		}
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		NotificationService service = new EmailNotificationService();
+		service = new LoggingDecorator(service);
+		service = new RetryDecorator(service);
+
+		service.send("john@example.com", "Your order has shipped!");
+	}
+}
+```
+
+### Decorator vs Inheritance
+
+This is one of the most important comparisons.
+
+| Topic | Decorator | Inheritance |
+|---|---|---|
+| How behavior is added | By wrapping an object | By extending a class |
+| Runtime flexibility | High — can combine decorators dynamically | Low — fixed at compile time |
+| Class explosion risk | Low | High if many combinations are needed |
+| Relationship | "has-a" | "is-a" |
+| Best for | Optional/combinable features | True specialization |
+
+**Example thought process:**
+- If `SportsCar` truly **is a** `Car`, inheritance is fine.
+- If a `Car` may or may not have `GPS`, `Sunroof`, `HeatedSeats`, and `Insurance`, decorator is better because features can be added in combinations.
+
+**Simple rule:**
+- Use **inheritance** when there is a strong "is-a" relationship.
+- Use **decorator** when you want optional, dynamic, layered features.
+
+### When to Use Decorator Pattern
+- Need optional features that can be mixed and matched
+- Want to extend behavior without touching original class
+- Many subclass combinations would otherwise be required
+
+### When NOT to Use
+- Behavior is fixed and will never vary
+- A plain subclass is enough and combinations are not needed
+
+---
+
+## 🔌 Pattern 2 — Adapter Pattern
+
+### What is it?
+
+> Convert the interface of a class into another interface clients expect. Adapter lets classes work together that couldn't otherwise because of incompatible interfaces.
+
+**In simple terms:** One class speaks one format, another expects a different format. Adapter acts like a translator.
+
+### Why It Matters
+- Reuses existing/legacy code without rewriting it
+- Helps integrate third-party libraries cleanly
+- Prevents changes from leaking across the codebase
+
+### Real-World Use Cases
+- **Legacy payment gateway integration**
+- **Using third-party SDKs** with different method names or parameter formats
+- **Data format conversion** — XML service adapted to JSON-based app
+- **Power plug adapters** — classic real-world analogy
+
+### Simple Example — Charger Adapter
+
+```java
+// Target interface expected by client
+interface TypeCCharger {
+	void chargeWithTypeC();
+}
+
+// Existing incompatible class
+class OldMicroUsbCharger {
+	public void chargeWithMicroUsb() {
+		System.out.println("Charging with old Micro-USB charger");
+	}
+}
+
+// Adapter bridges the gap
+class MicroUsbToTypeCAdapter implements TypeCCharger {
+	private final OldMicroUsbCharger oldCharger;
+
+	public MicroUsbToTypeCAdapter(OldMicroUsbCharger oldCharger) {
+		this.oldCharger = oldCharger;
+	}
+
+	@Override
+	public void chargeWithTypeC() {
+		oldCharger.chargeWithMicroUsb();
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		OldMicroUsbCharger oldCharger = new OldMicroUsbCharger();
+		TypeCCharger charger = new MicroUsbToTypeCAdapter(oldCharger);
+
+		charger.chargeWithTypeC();
+	}
+}
+```
+
+### Medium Example — Legacy Payment Gateway Adapter
+
+This is a very practical interview example.
+
+```java
+// New interface expected by our checkout system
+interface PaymentProcessor {
+	void pay(double amount);
+}
+
+// Legacy gateway we cannot change
+class LegacyBankGateway {
+	public void makePaymentInPaise(int paise) {
+		System.out.println("🏦 Paid " + paise + " paise via Legacy Bank Gateway");
+	}
+}
+
+// Adapter converts rupees to paise and bridges method names
+class LegacyBankAdapter implements PaymentProcessor {
+	private final LegacyBankGateway legacyGateway;
+
+	public LegacyBankAdapter(LegacyBankGateway legacyGateway) {
+		this.legacyGateway = legacyGateway;
+	}
+
+	@Override
+	public void pay(double amount) {
+		int paise = (int) (amount * 100);
+		legacyGateway.makePaymentInPaise(paise);
+	}
+}
+
+class CheckoutService {
+	private final PaymentProcessor paymentProcessor;
+
+	public CheckoutService(PaymentProcessor paymentProcessor) {
+		this.paymentProcessor = paymentProcessor;
+	}
+
+	public void checkout(double amount) {
+		paymentProcessor.pay(amount);
+		System.out.println("✅ Checkout completed");
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		LegacyBankGateway legacyBankGateway = new LegacyBankGateway();
+		PaymentProcessor adapter = new LegacyBankAdapter(legacyBankGateway);
+
+		CheckoutService checkoutService = new CheckoutService(adapter);
+		checkoutService.checkout(499.99);
+	}
+}
+```
+
+**Why this is realistic:** Teams often keep their clean internal interface while adapting older vendor SDKs behind the scenes.
+
+### When to Use Adapter Pattern
+- Integrating with legacy or third-party systems
+- Existing class is useful but has the wrong interface
+- Want to isolate compatibility code in one place
+
+### When NOT to Use
+- You fully control both sides and can simply redesign the interface
+- No mismatch exists between client expectation and service interface
+
+---
+
+## 🏛️ Pattern 3 — Facade Pattern
+
+### What is it?
+
+> Provide a unified, simplified interface to a set of interfaces in a subsystem.
+
+**In simple terms:** Instead of dealing with many classes step by step, the client calls one facade method and the facade handles the complexity.
+
+### Why It Matters
+- Hides subsystem complexity
+- Makes APIs easier to use
+- Reduces coupling between client and internal components
+- Improves readability of higher-level business flows
+
+### Real-World Use Cases
+- **Hotel/travel booking** — one method coordinates room, payment, invoice, email
+- **Order placement** — inventory, payment, shipping, notification wrapped behind one service
+- **Spring's `JdbcTemplate`** — simplifies JDBC boilerplate
+- **Home theater system** — one `watchMovie()` method controls many devices
+
+### Simple Example — Home Theater Facade
+
+```java
+class TV {
+	public void on() {
+		System.out.println("TV is ON");
+	}
+}
+
+class SoundSystem {
+	public void on() {
+		System.out.println("Sound System is ON");
+	}
+}
+
+class StreamingDevice {
+	public void play(String movie) {
+		System.out.println("Playing movie: " + movie);
+	}
+}
+
+class HomeTheaterFacade {
+	private final TV tv;
+	private final SoundSystem soundSystem;
+	private final StreamingDevice streamingDevice;
+
+	public HomeTheaterFacade(TV tv, SoundSystem soundSystem, StreamingDevice streamingDevice) {
+		this.tv = tv;
+		this.soundSystem = soundSystem;
+		this.streamingDevice = streamingDevice;
+	}
+
+	public void watchMovie(String movie) {
+		tv.on();
+		soundSystem.on();
+		streamingDevice.play(movie);
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		HomeTheaterFacade theater = new HomeTheaterFacade(new TV(), new SoundSystem(), new StreamingDevice());
+		theater.watchMovie("Inception");
+	}
+}
+```
+
+### Medium Example — Order Placement Facade
+
+```java
+class InventoryService {
+	public boolean checkStock(String productId) {
+		System.out.println("📦 Checking stock for " + productId);
+		return true;
+	}
+}
+
+class PaymentService {
+	public boolean charge(String customerId, double amount) {
+		System.out.println("💳 Charging customer " + customerId + " for ₹" + amount);
+		return true;
+	}
+}
+
+class ShippingService {
+	public void ship(String productId) {
+		System.out.println("🚚 Shipping product " + productId);
+	}
+}
+
+class NotificationService {
+	public void notifyUser(String customerId, String message) {
+		System.out.println("📧 Notification to " + customerId + ": " + message);
+	}
+}
+
+class OrderFacade {
+	private final InventoryService inventoryService = new InventoryService();
+	private final PaymentService paymentService = new PaymentService();
+	private final ShippingService shippingService = new ShippingService();
+	private final NotificationService notificationService = new NotificationService();
+
+	public void placeOrder(String customerId, String productId, double amount) {
+		if (!inventoryService.checkStock(productId)) {
+			System.out.println("❌ Product out of stock");
+			return;
+		}
+
+		if (!paymentService.charge(customerId, amount)) {
+			System.out.println("❌ Payment failed");
+			return;
+		}
+
+		shippingService.ship(productId);
+		notificationService.notifyUser(customerId, "Your order has been placed successfully!");
+
+		System.out.println("✅ Order completed successfully");
+	}
+}
+
+public class Main {
+	public static void main(String[] args) {
+		OrderFacade orderFacade = new OrderFacade();
+		orderFacade.placeOrder("cust_1001", "iphone-15", 79999.0);
+	}
+}
+```
+
+### When to Use Facade Pattern
+- Subsystem is complex and callers need a simpler API
+- Want to hide implementation details from client code
+- Need a clean entry point for a workflow involving many services
+
+### When NOT to Use
+- The subsystem is already simple
+- Facade would become a god object with too many unrelated responsibilities
+
+---
+
+## 📝 Key Takeaways
+
+1. **Decorator** adds features dynamically by wrapping objects instead of modifying the original class
+2. **Adapter** helps incompatible interfaces work together without changing existing code
+3. **Facade** hides subsystem complexity and gives the client one clean entry point
+4. Decorator is often preferred over inheritance when many feature combinations are possible
+5. Adapter is very common in real projects involving third-party SDKs and legacy systems
+6. Facade improves usability, but should not become a giant all-knowing service
+7. Structural patterns focus on **how objects are connected**, not how they are created or how they behave
+8. In interviews, always explain the mismatch/problem first, then why the pattern fits
+
+---
+
+## 🔍 Interview Cheat Sheet
+
+| Question | Quick Answer |
+|---|---|
+| "Decorator vs Inheritance?" | Decorator adds features dynamically via composition; inheritance adds behavior statically via subclassing |
+| "When would you use Adapter?" | When an existing or third-party class is useful but exposes the wrong interface |
+| "What problem does Facade solve?" | It simplifies interaction with a complex subsystem by exposing a small, clean API |
+| "Is Facade the same as Adapter?" | No — Adapter changes interface compatibility; Facade simplifies usage of multiple classes |
+| "Real example of Decorator in Java?" | Java I/O streams like `BufferedInputStream` wrapping another `InputStream` |
+| "Facade downside?" | It can become a god object if it starts doing too much |
+
+---
+
+## ✅ Checklist
+
+- [x] Understand what Structural Patterns are and why they exist
+- [x] Implement Decorator Pattern with simple and medium examples
+- [x] Understand Decorator vs Inheritance clearly
+- [x] Implement Adapter Pattern for compatibility/translation use cases
+- [x] Practice realistic Adapter examples with legacy systems
+- [x] Implement Facade Pattern for subsystem simplification
+- [x] Understand real-world use cases for all three patterns
+- [x] Know trade-offs and interview-ready explanations
+
+---
+
+## 🔗 References
+
+- **Design Patterns: Elements of Reusable Object-Oriented Software** — Gang of Four (GoF)
+- **Head First Design Patterns** — Freeman & Robson (O'Reilly)
+- **Refactoring Guru** — [Decorator](https://refactoring.guru/design-patterns/decorator), [Adapter](https://refactoring.guru/design-patterns/adapter), [Facade](https://refactoring.guru/design-patterns/facade)
+- **Effective Java (3rd Edition)** — Joshua Bloch (for preferring composition over inheritance)
+- **Design Gurus** — Grokking the Low Level Design Interview
+- **Baeldung** — Java Structural Design Patterns series
+- **Martin Fowler** — Refactoring and enterprise design notes on layering and abstraction
+
+---
+
+**Status:** ✅ Completed on 2026-07-09  
+**Time Spent:** 2 hours 10 minutes  
+**Next:** Day 10 — Design Patterns Practice and Interview Revision
