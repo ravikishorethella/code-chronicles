@@ -66,7 +66,7 @@ function BlogContent({ posts, tagCounts }: Props) {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredPosts.map((post) => (
-            <BlogCard key={post.slug} post={post} />
+            <BlogCard key={post.url} post={post} />
           ))}
         </div>
       )}

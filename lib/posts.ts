@@ -2,11 +2,19 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
+import { getAllStudyPlanNotes } from "./studyPlanNotes";
 
 const postsDirectory = path.join(process.cwd(), "content/blog");
+const PINNED_POST_SLUGS = [
+  "what-i-learned-about-llms",
+  "building-first-rag-chatbot",
+  "rag-from-scratch",
+  "building-rag-chatbot-interview-coach",
+];
 
 export interface PostMeta {
   slug: string;
+  url: string;
   title: string;
   date: string;
   excerpt: string;
@@ -28,19 +36,36 @@ export function getAllPostSlugs(): string[] {
 }
 
 export function getAllPosts(): PostMeta[] {
-  const slugs = getAllPostSlugs();
-  return slugs
+  const blogPosts = getAllPostSlugs()
     .map((slug) => getPostMeta(slug))
     .filter((post): post is PostMeta => post !== null && !post.draft)
+  const systemDesignNotes = getAllStudyPlanNotes().map((note) => ({
+    slug: note.slug,
+    url: `/study-plans/system-design/${note.slug}`,
+    title: note.title,
+    date: note.date,
+    excerpt: `Day ${note.day}: ${note.phase}`,
+    tags: note.tags,
+    readingTime: note.readingTime,
+    draft: false,
+  }));
+
+  const allPosts = [...blogPosts, ...systemDesignNotes];
+  const pinnedSet = new Set(PINNED_POST_SLUGS);
+
+  const pinnedPosts = PINNED_POST_SLUGS.map((slug) =>
+    allPosts.find((post) => post.slug === slug)
+  ).filter((post): post is PostMeta => post !== undefined);
+
+  const remainingPosts = allPosts
+    .filter((post) => !pinnedSet.has(post.slug))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+  return [...pinnedPosts, ...remainingPosts];
 }
 
 export function getPostMeta(slug: string): PostMeta | null {
   try {
-    const fullPath =
-      path.join(postsDirectory, `${slug}.mdx`) ||
-      path.join(postsDirectory, `${slug}.md`);
-
     const mdxPath = path.join(postsDirectory, `${slug}.mdx`);
     const mdPath = path.join(postsDirectory, `${slug}.md`);
     const filePath = fs.existsSync(mdxPath) ? mdxPath : mdPath;
@@ -51,6 +76,7 @@ export function getPostMeta(slug: string): PostMeta | null {
 
     return {
       slug,
+      url: `/blog/${slug}`,
       title: data.title || slug,
       date: data.date || new Date().toISOString().split("T")[0],
       excerpt: data.excerpt || "",
@@ -75,6 +101,7 @@ export function getPostBySlug(slug: string): Post | null {
 
     return {
       slug,
+      url: `/blog/${slug}`,
       title: data.title || slug,
       date: data.date || new Date().toISOString().split("T")[0],
       excerpt: data.excerpt || "",
