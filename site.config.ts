@@ -7,7 +7,7 @@ const siteConfig = {
   author: {
     name: "Ravi Kishore Thella", // TODO: Replace with your name
     role: "Full Stack Developer & AI Explorer",
-    bio: "9 years of building production apps with Java, Spring Boot, React & JavaScript. Now exploring AI agents, LLMs, RAG, and LangChain. Learning in public.",
+    bio: "9 years of building production apps with JavaScript, React, Python, Java, Spring Boot. Now exploring AI agents, LLMs, RAG, and LangChain. Learning in public.",
     location: "Tampa, USA", // TODO: Replace
     email: "ravikthella@outlook.com", // TODO: Replace
     github: "https://github.com/ravikishorethella", // TODO: Replace

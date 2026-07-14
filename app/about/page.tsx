@@ -47,7 +47,7 @@ export default function AboutPage() {
       <section className="mb-12">
         <div className="rounded-xl bg-indigo-50 p-6 dark:bg-indigo-900/20">
           <p className="leading-relaxed text-gray-700 dark:text-gray-300">
-            I have 9 years of experience building production applications with Java, Spring Boot, React, and JavaScript.
+            I have 9 years of experience building production applications with JavaScript, React, Python, Java, Spring Boot.
             In 2026, I started my journey into AI — exploring LLMs, building RAG systems, and creating AI agents.
             This blog is my public learning journal.
           </p>
@@ -57,6 +57,9 @@ export default function AboutPage() {
               Google Cloud Associate certification
             </span>{" "}
             and am actively building AI-powered applications combining my enterprise Java experience with modern LLM tooling.
+          </p>
+          <p className="mt-4 leading-relaxed text-gray-700 dark:text-gray-300">
+            Open to Work - <a href="/Ravi_Kishore_Thella_resume.pdf" className="font-semibold text-indigo-700 hover:underline dark:text-indigo-400">Resume</a>
           </p>
         </div>
       </section>
